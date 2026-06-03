@@ -38,11 +38,16 @@ ROW_LABELS = {
 }
 
 
-def _render(pdf_path: str, dpi: int) -> list[Image.Image]:
+def _render(pdf_path: str, dpi: int, page: int | None = None) -> list[Image.Image]:
+    """Rasterise the PDF. If `page` (0-based) is given, render ONLY that page
+    (much cheaper at high DPI than rendering all pages and discarding them)."""
     from pdf2image import convert_from_path
     kwargs = {"dpi": dpi}
     if config.POPPLER_PATH:
         kwargs["poppler_path"] = config.POPPLER_PATH
+    if page is not None:
+        kwargs["first_page"] = page + 1   # pdf2image is 1-based
+        kwargs["last_page"] = page + 1
     return convert_from_path(pdf_path, **kwargs)
 
 
@@ -103,7 +108,7 @@ def crop_band(pdf_path: str, out_path: str | None = None) -> str | None:
     row_h = span / max(1, len(located) - 1)
     scale = CROP_DPI / LOCATE_DPI
 
-    hi = _render(pdf_path, CROP_DPI)[page_idx]
+    hi = _render(pdf_path, CROP_DPI, page=page_idx)[0]  # render only that page
     top = max(0, int((min(tops) - row_h) * scale))
     bottom = min(hi.height, int((max(bottoms) + row_h) * scale))
     left = max(0, int((label_left - 0.2 * row_h) * scale))
