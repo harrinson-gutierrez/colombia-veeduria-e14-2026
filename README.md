@@ -17,6 +17,19 @@ own machine.
 follow [Pipeline flow](#pipeline-flow). To review forms in a browser, jump to
 [Review station](#review-station-human-in-the-loop).
 
+## Screenshots
+
+Browse like the official site — Department → Municipality → Zone → Station →
+tables — with per-level progress (`X/Y verified`) and verdict chips:
+
+![Hierarchical browser](docs/browse.png)
+
+Open a table to verify it: the PDF on the left, the numbers (auto-read by the
+local vision model, confirmed by you) on the right, including a zoomed crop of
+the blank/null/unmarked/total band:
+
+![Review station](docs/station.png)
+
 The first supported source is the **E14 tally form** published by Colombia's
 Registraduría on its public results website. The architecture is
 source-agnostic: any jurisdiction that publishes scanned tally sheets can be
