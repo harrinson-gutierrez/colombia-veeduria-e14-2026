@@ -1,13 +1,20 @@
-# vote-verify
+# e14-colombia-audit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![Country](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)
 
-vote-verify is a local-only pipeline that downloads scanned vote tally sheets,
-runs OCR on them, validates that the reported vote sums are internally
-consistent, and produces local reports. It is built to make the audit of
-published election results **transparent and reproducible** — entirely on your
-own machine.
+**Audit tool for Colombia's E14 presidential tally sheets (2026 election).**
+Herramienta de auditoría del **formulario E14** de las elecciones presidenciales
+de **Colombia 2026**.
+
+It downloads the scanned E14 tally sheets that Colombia's **Registraduría**
+publishes on its public results site
+(`divulgacione14presidente.registraduria.gov.co`), reads the handwritten vote
+counts with a **local** vision model, checks that the reported sums add up, and
+lets a human review every flagged form against the original PDF. The goal is to
+make auditing the published results **transparent and reproducible** — entirely
+on your own machine, nothing uploaded.
 
 > **A flag means "needs manual review", not "fraud".** Vision and OCR misread
 > handwriting, so mismatches are often reading errors. Every finding links back
