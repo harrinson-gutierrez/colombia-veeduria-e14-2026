@@ -40,24 +40,54 @@ def _norm(s: str) -> str:
     return "".join(ch for ch in s.lower() if ch.isalnum() or ch == " ").strip()
 
 
-def match_index(name: str) -> int | None:
-    """Best master-list index for a (possibly misspelled) vision name, or None.
+# Tokens that are too short/common to identify a candidate on their own.
+_STOPWORDS = {"de", "la", "el", "los", "del", "y", "san"}
 
-    Matches on shared word tokens; tolerant of OCR errors in a single token.
+
+def _tokens(name: str) -> set[str]:
+    return {t for t in _norm(name).split() if len(t) >= 3 and t not in _STOPWORDS}
+
+
+# token -> set of master indexes that contain it. Built once.
+_TOKEN_OWNERS: dict[str, set[int]] = {}
+for _i, _m in enumerate(MASTER_CANDIDATES):
+    for _t in _tokens(_m):
+        _TOKEN_OWNERS.setdefault(_t, set()).add(_i)
+
+
+def match_index(name: str) -> int | None:
+    """Best master-list index for a (possibly misspelled/truncated) vision name.
+
+    Strategy:
+    1. If any read token is DISTINCTIVE (belongs to exactly one candidate), trust
+       it — this maps a truncated name like "OSCAR" to Óscar Lizcano, which the
+       old proportional score rejected (1 shared word / 4 = 0.25 < threshold).
+    2. Otherwise fall back to the proportional overlap score.
     """
     if not name:
         return None
-    target = set(_norm(name).split())
+    target = _tokens(name)
     if not target:
         return None
+
+    # 1. Distinctive single-owner token -> confident match.
+    owners: dict[int, int] = {}
+    for t in target:
+        own = _TOKEN_OWNERS.get(t)
+        if own and len(own) == 1:
+            idx = next(iter(own))
+            owners[idx] = owners.get(idx, 0) + 1
+    if owners:
+        # The candidate hit by the most distinctive tokens wins.
+        return max(owners, key=owners.get)
+
+    # 2. Fallback: proportional overlap against each master name.
     best, best_score = None, 0.0
     for idx, master in enumerate(MASTER_CANDIDATES):
-        mtok = set(_norm(master).split())
+        mtok = _tokens(master)
         if not mtok:
             continue
-        overlap = len(target & mtok)
-        score = overlap / max(len(mtok), 1)
+        score = len(target & mtok) / max(len(mtok), 1)
         if score > best_score:
             best, best_score = idx, score
-    # Require at least one full shared surname-ish token.
     return best if best_score >= 0.34 else None

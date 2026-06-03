@@ -18,10 +18,12 @@ import urllib.request
 import config
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-# Vision model for reading handwritten digits. Qwen2.5-VL reads numbers markedly
-# better than gemma for this; override via the VISION_MODEL env var if needed.
+# Vision model for reading handwritten digits. llama3.2-vision is ~2.8x faster
+# than qwen2.5vl (~24-34s vs ~68s per sheet) with comparable digit accuracy on a
+# 12 GB GPU, so it is the default. Override via the VISION_MODEL env var, e.g.
+# VISION_MODEL=qwen2.5vl:7b (more consistent name mapping, but slower).
 import os as _os
-VISION_MODEL = _os.environ.get("VISION_MODEL", "qwen2.5vl:7b")
+VISION_MODEL = _os.environ.get("VISION_MODEL", "llama3.2-vision:latest")
 VISION_TIMEOUT = 300
 RASTER_DPI = 210   # higher detail for handwriting; balances accuracy vs speed
 
@@ -53,18 +55,23 @@ except ImportError:
     convert_from_path = None
 
 
-def available() -> bool:
-    """True if Ollama is reachable and the vision model is present."""
+def available_model(model: str) -> bool:
+    """True if Ollama is reachable and `model` (by name or base) is installed."""
     try:
         req = urllib.request.Request("http://127.0.0.1:11434/api/tags")
         with urllib.request.urlopen(req, timeout=5) as r:
             tags = json.load(r)
         names = {m.get("name", "") for m in tags.get("models", [])}
-        base = VISION_MODEL.split(":")[0]
-        present = any(n == VISION_MODEL or n.split(":")[0] == base for n in names)
+        base = model.split(":")[0]
+        present = any(n == model or n.split(":")[0] == base for n in names)
         return present and convert_from_path is not None
     except Exception:  # noqa: BLE001
         return False
+
+
+def available() -> bool:
+    """True if Ollama is reachable and the configured vision model is present."""
+    return available_model(VISION_MODEL)
 
 
 def _pages_as_png_b64(pdf_path: str) -> list[str]:
