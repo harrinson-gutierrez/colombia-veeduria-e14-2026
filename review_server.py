@@ -534,7 +534,18 @@ def ocr_prefill(conn, code):
         import vision
         if not vision.available():
             return {"ok": False, "reason": "vision model not available (start Ollama)"}
-        result = vision.read_tally(path)
+        # Read the full page (candidates + total) and the totals-band crop in
+        # PARALLEL: they are independent calls and Ollama overlaps them, cutting
+        # the wall-clock from sum(both) to ~max(both).
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_tally = pool.submit(vision.read_tally, path)
+            f_band = pool.submit(vision.read_totals_band, path)
+            result = f_tally.result()
+            try:
+                band = f_band.result()
+            except Exception:  # noqa: BLE001 - band is best-effort
+                band = {}
     except Exception as exc:                # noqa: BLE001 - stay resilient
         return {"ok": False, "reason": str(exc)[:120]}
 
@@ -558,13 +569,9 @@ def ocr_prefill(conn, code):
         filled += 1
 
     # blank/null/unmarked are unreadable from the full page (vision returns 0).
-    # They DO read correctly from a tight, label-included crop of the totals
-    # table, so read that band separately. total comes from the full page.
+    # They DO read correctly from the totals-band crop, read in parallel above.
+    # total comes from the full page.
     set_ocr("total", result.get("total"))
-    try:
-        band = vision.read_totals_band(path)
-    except Exception:  # noqa: BLE001
-        band = {}
     for fixed in ("blank", "null", "unmarked"):
         set_ocr(fixed, band.get(fixed))
 
@@ -835,6 +842,9 @@ def station_shell(body, dept, code, total_dl, reviewed, prefilled=False):
  .sumcheck.ok{{background:#e3f6e9;color:#1b6e3a}} .sumcheck.bad{{background:#fde7e7;color:#b3261e}}
  .rebtn{{font-size:.7rem;font-weight:400;background:#6750a4;color:#fff;border:0;border-radius:5px;padding:.25rem .5rem;cursor:pointer;margin-left:.5rem}}
  .vbadge{{font-size:.78rem;color:#6750a4;min-height:1.1rem;margin:.2rem 0}}
+ .vbadge.reading{{background:#ede7f6;color:#4527a0;font-weight:600;padding:.35rem .6rem;
+   border-radius:6px;border:1px solid #b39ddb;animation:vpulse 1.2s ease-in-out infinite}}
+ @keyframes vpulse{{0%,100%{{opacity:1}}50%{{opacity:.55}}}}
  .fromvision{{border:2px solid #d32f2f !important;background:#fdecea}}
  .confirmed{{border:2px solid #1b6e3a !important;background:#fff}}
  .sumcheck.empty{{background:#eee;color:#666}}
@@ -968,18 +978,28 @@ async function prefill(force){{
   const badge=document.getElementById('visionBadge');
   // Skip auto-run if this table already has stored guesses (unless forced).
   if(!force && PREFILLED){{ if(badge) badge.textContent=''; return; }}
-  if(badge) badge.textContent='Reading with local vision model... / Leyendo con vision local...';
+  // Live timer so the ~1 minute vision read never looks frozen.
+  let secs=0;
+  if(badge){{
+    badge.classList.add('reading');
+    badge.textContent='Reading with local vision (~1 min)... / Leyendo con vision local... 0s';
+  }}
+  const timer=setInterval(()=>{{ secs++; if(badge)
+    badge.textContent='Reading with local vision (~1 min)... / Leyendo con vision local... '+secs+'s'; }},1000);
   try{{
     const r=await (await fetch('/ocr_prefill?code='+encodeURIComponent(CODE))).json();
+    clearInterval(timer);
+    if(badge) badge.classList.remove('reading');
     if(r && r.ok && r.filled){{
-      if(badge) badge.textContent='Read '+r.filled+' values, loading...';
+      if(badge) badge.textContent='Read '+r.filled+' values in '+secs+'s, loading...';
       const u=new URL(location.href); location.replace(u.pathname+u.search);
     }}else if(r && !r.ok){{
       if(badge) badge.textContent='Vision unavailable: '+(r.reason||'')+'. Type the numbers from the PDF.';
     }}else{{
       if(badge) badge.textContent='Vision read nothing readable. Type the numbers from the PDF.';
     }}
-  }}catch(e){{ if(badge) badge.textContent='Vision error. Type the numbers from the PDF.'; }}
+  }}catch(e){{ clearInterval(timer); if(badge){{ badge.classList.remove('reading');
+    badge.textContent='Vision error. Type the numbers from the PDF.'; }} }}
 }}
 const reBtn=document.getElementById('revisionBtn');
 if(reBtn) reBtn.onclick=()=>prefill(true);

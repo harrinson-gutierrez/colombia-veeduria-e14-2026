@@ -1,184 +1,215 @@
 # e14-colombia-audit
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**🇪🇸 Español** · [🇬🇧 English](README.en.md)
+
+[![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Country](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)
+![País](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)
 
-**Audit tool for Colombia's E14 presidential tally sheets (2026 election).**
-Herramienta de auditoría del **formulario E14** de las elecciones presidenciales
-de **Colombia 2026**.
+**Herramienta de auditoría del formulario E14 — elecciones presidenciales de Colombia 2026.**
 
-It downloads the scanned E14 tally sheets that Colombia's **Registraduría**
-publishes on its public results site
-(`divulgacione14presidente.registraduria.gov.co`), reads the handwritten vote
-counts with a **local** vision model, checks that the reported sums add up, and
-lets a human review every flagged form against the original PDF. The goal is to
-make auditing the published results **transparent and reproducible** — entirely
-on your own machine, nothing uploaded.
+Descarga las actas E14 escaneadas que publica la **Registraduría** en su sitio
+oficial de resultados (`divulgacione14presidente.registraduria.gov.co`), lee los
+conteos manuscritos con un modelo de visión **local**, verifica que las sumas
+reportadas cuadren, y permite que una persona revise cada acta marcada contra el
+PDF original. El objetivo es hacer la auditoría de los resultados publicados
+**transparente y reproducible** — todo en tu propia máquina, sin subir nada.
 
-> **A flag means "needs manual review", not "fraud".** Vision and OCR misread
-> handwriting, so mismatches are often reading errors. Every finding links back
-> to the original PDF for a human to verify. See the note at the end.
+> **Marcar una mesa NO es declarar fraude.** La visión y el OCR leen mal la
+> letra manuscrita, así que las discrepancias suelen ser errores de lectura.
+> Cada hallazgo enlaza al PDF original para que una persona lo verifique. Ver la
+> nota al final.
 
-**Quick start:** install the tools (see [INSTALL_OCR.md](INSTALL_OCR.md)), then
-follow [Pipeline flow](#pipeline-flow). To review forms in a browser, jump to
-[Review station](#review-station-human-in-the-loop).
+**Inicio rápido:** instala las herramientas (ver [INSTALL_OCR.md](INSTALL_OCR.md)),
+luego sigue [Flujo del pipeline](#flujo-del-pipeline). Para revisar actas en el
+navegador, ve a [Estación de revisión](#estación-de-revisión-con-persona-en-el-ciclo).
 
-## Screenshots
+## Capturas
 
-Browse like the official site — Department → Municipality → Zone → Station →
-tables — with per-level progress (`X/Y verified`) and verdict chips:
+Navega como en el sitio oficial — Departamento → Municipio → Zona → Puesto →
+mesas — con el avance por nivel (`X/Y verificadas`) y etiquetas de estado:
 
-![Hierarchical browser](docs/browse.png)
+![Navegador jerárquico](docs/browse.png)
 
-Open a table to verify it: the PDF on the left, the numbers (auto-read by the
-local vision model, confirmed by you) on the right, including a zoomed crop of
-the blank/null/unmarked/total band:
+Abre una mesa para verificarla: el PDF a la izquierda, los números (leídos
+automáticamente por el modelo de visión local, que tú confirmas) a la derecha,
+incluyendo un recorte ampliado de la banda de blanco/nulos/no-marcados/total:
 
-![Review station](docs/station.png)
+![Estación de revisión](docs/station.png)
 
-The first supported source is the **E14 tally form** published by Colombia's
-Registraduría on its public results website. The architecture is
-source-agnostic: any jurisdiction that publishes scanned tally sheets can be
-added as a new source.
+La primera fuente soportada es el **formulario E14** que publica la Registraduría
+de Colombia. La arquitectura es agnóstica a la fuente: cualquier jurisdicción que
+publique actas escaneadas puede agregarse como una fuente nueva.
 
-Everything runs locally. A SQLite database (`data/pipeline.db`) is the single
-source of truth, the PDFs live in `data/forms`, and reports are written to
-`data/reports/`. Nothing is uploaded.
+Todo corre localmente. Una base de datos SQLite (`data/pipeline.db`) es la única
+fuente de verdad, los PDF viven en `data/forms`, y los reportes se escriben en
+`data/reports/`. No se sube nada.
 
-## Source site layout (empirically confirmed)
+## Dos formas de usarlo
 
-- **Metadata**: static JSON files served from `/assets/temis/divipol_json/`. The
-  master file is `allTransmissionCodes.json` (~36 MB): one node per polling table
-  with its `expectedName` (the PDF file name) and location coordinates.
-- **Tally sheet PDF**, URL pattern **confirmed 12/12** by observing live traffic:
+| | **Pipeline local** (flujo principal del repo) | **App web pública** (`public_server.py`) |
+|---|---|---|
+| Para | un auditor con un PC capaz | cualquiera, sin instalar |
+| Visión | Ollama local lee los números solo | ninguna — la persona escribe lo que ve |
+| Instalar | Python + Tesseract + Poppler + Ollama | nada (el visitante solo abre una URL) |
+| Almacenamiento | SQLite + PDF descargados en disco | nada en el servidor; los veredictos viven en el navegador del visitante |
+| PDF | descargados y cacheados | traídos por proxy bajo demanda desde la Registraduría |
+| Hosting | tu máquina | cualquier host Python gratis (ej. Render) |
 
-  ```
-  /assets/temis/pdf/{dept}/{mun}/{zone:3digits}/{stationCode}/{tableNumber}/PRE/{expectedName}
-  ```
+### Correr la app web pública
 
-  Key detail: the **zone is zero-padded to 3 digits** (`09` -> `009`);
-  `stationCode` and `tableNumber` are used as-is. The polling station is
-  `stationCode` and the polling table is `tableNumber`.
-- **Anti-bot protection**: the source site sits behind a CDN/WAF. A real browser
-  always passes; a plain Python client may need browser cookies (see step 2.5).
-- **Universe**: ~121,592 polling tables (status `11` = published; `3` = a special
-  subset).
-
-## Pipeline flow
-
-The pipeline runs in three stages, all locally against the SQLite database. The
-agent orchestrates them in a resumable loop; you can also run each stage on its
-own.
+Cero instalación para los visitantes. Lee un índice pequeño y versionado
+(`data/public_index.csv.gz`), trae cada PDF oficial por proxy bajo demanda, y
+guarda los números y veredictos del visitante en su propio navegador
+(`localStorage`).
 
 ```bash
-# 1. Prepare the metadata and load the index into SQLite
-python inspect_meta.py          # download metadata JSON
-python discover.py              # build data/index.csv (one row per polling table)
-python import_index.py          # load the index into data/pipeline.db
-python check_access.py          # does plain Python pass the WAF? tells you which path to use
+python build_public_index.py     # una vez: construye data/public_index.csv.gz
+python public_server.py          # sirve http://localhost:8080
+```
 
-# 2. Run the whole pipeline for a department (resumable loop)
-python agent.py --dept 16       # download -> ocr -> validate, looping until done
+**Desplegar gratis en Render:** sube este repo, crea un servicio tipo *Blueprint*
+en render.com — lee el archivo `render.yaml`. Sin GPU, sin base de datos, sin
+llaves de API. En el plan gratis la app "duerme" tras inactividad (la primera
+visita tarda ~30 s en despertar).
 
-# ...or run the stages individually:
-python download.py --status 11              # Stage 1: resumable download
-python download.py --status 11 --dept 16    # or filter by department
-python ocr.py --status 11                   # Stage 2: OCR the downloaded PDFs
-python validate.py --dept 16                # Stage 3: vote-sum check, flag mismatches
+## Estructura del sitio fuente (confirmada empíricamente)
 
-# If the WAF blocks plain Python, use the browser download path:
+- **Metadatos**: archivos JSON estáticos servidos en `/assets/temis/divipol_json/`.
+  El archivo maestro es `allTransmissionCodes.json` (~36 MB): un nodo por mesa
+  con su `expectedName` (el nombre del PDF) y sus coordenadas de ubicación.
+- **PDF del acta**, patrón de URL **confirmado 12/12** observando el tráfico real:
+
+  ```
+  /assets/temis/pdf/{dpto}/{mun}/{zona:3dígitos}/{codigoPuesto}/{numeroMesa}/PRE/{expectedName}
+  ```
+
+  Detalle clave: la **zona va con relleno a 3 dígitos** (`09` -> `009`); el
+  código de puesto y el número de mesa van tal cual.
+- **Protección anti-bot**: el sitio fuente está detrás de un CDN/WAF. Un
+  navegador real siempre pasa; un cliente Python simple puede necesitar las
+  cookies del navegador (ver paso 2.5).
+- **Universo**: ~121.592 mesas (estado `11` = publicada; `3` = un subconjunto
+  especial).
+
+## Flujo del pipeline
+
+El pipeline corre en tres etapas, todas localmente contra la base de datos
+SQLite. El orquestador las corre en un bucle reanudable; también puedes correr
+cada etapa por separado.
+
+```bash
+# 1. Preparar los metadatos y cargar el índice en SQLite
+python inspect_meta.py          # descarga los JSON de metadatos
+python discover.py              # construye data/index.csv (una fila por mesa)
+python import_index.py          # carga el índice en data/pipeline.db
+python check_access.py          # ¿pasa Python simple el WAF? te dice qué camino usar
+
+# 2. Correr todo el pipeline para un departamento (bucle reanudable)
+python agent.py --dept 16       # descarga -> ocr -> valida, en bucle hasta terminar
+
+# ...o correr las etapas por separado:
+python download.py --status 11              # Etapa 1: descarga reanudable
+python download.py --status 11 --dept 16    # o filtrar por departamento
+python ocr.py --status 11                   # Etapa 2: OCR de los PDF descargados
+python validate.py --dept 16                # Etapa 3: cuadre de votos, marca discrepancias
+
+# Si el WAF bloquea a Python simple, usa el camino de descarga por navegador:
 pip install --user playwright && python -m playwright install chromium
 python browser_download.py --status 11
 
-# 3. Check progress and generate the local report
-python status.py                # report pipeline progress per stage
-python verify_mapping.py        # sanity-check index -> URL -> local path mapping
-python report.py --dept 16      # writes data/reports/summary.html (open it in a browser)
+# 3. Revisar el avance y generar el reporte local
+python status.py                # reporta el avance del pipeline por etapa
+python verify_mapping.py        # verifica el mapeo índice -> URL -> ruta local
+python report.py --dept 16      # escribe data/reports/summary.html (ábrelo en un navegador)
 ```
 
-Always start with `--limit 20` to validate before downloading everything.
+Empieza siempre con `--limit 20` para validar antes de descargar todo.
 
-Downloaded PDFs are written to `data/forms`. The local report is written to
-`data/reports/summary.html` (bilingual EN/ES).
+Los PDF descargados se escriben en `data/forms`. El reporte local se escribe en
+`data/reports/summary.html` (bilingüe EN/ES).
 
-## Stages
+## Etapas
 
-| Stage | Name | What it does |
+| Etapa | Nombre | Qué hace |
 |---|---|---|
-| 1 | Download | Fetch tally sheet PDFs; resumable; validates `%PDF` magic bytes |
-| 2 | Read (OCR / vision) | Read the handwritten numbers off each PDF and store them |
-| 3 | Validation | Check that the reported vote sums add up; flag mismatches |
+| 1 | Descarga | Trae los PDF de las actas; reanudable; valida los bytes mágicos `%PDF` |
+| 2 | Lectura (OCR / visión) | Lee los números manuscritos de cada PDF y los guarda |
+| 3 | Validación | Verifica que las sumas de votos cuadren; marca las discrepancias |
 
-## Review station (human-in-the-loop)
+## Estación de revisión (con persona en el ciclo)
 
-A flag is never the final word — a human confirms each one against the original
-PDF. The review station is a local web app for exactly that:
+Una marca nunca es la última palabra — una persona confirma cada una contra el
+PDF original. La estación de revisión es una app web local para eso:
 
 ```bash
-python review_server.py --dept 16     # serves http://127.0.0.1:8765
+python review_server.py --dept 16     # sirve http://127.0.0.1:8765
 ```
 
-- **Browse like the official site**: Department → Municipality → Zone → Station →
-  tables. Each card shows your progress (`X/Y verified`) and per-verdict chips.
-- **Open any table**: its PDF is downloaded on demand if missing, and the local
-  vision model auto-reads the numbers to pre-fill the form (a guess you confirm).
-- **Verdict**: mark each table Verified / Anomaly / Unclear. Verdicts are stored
-  in the local `reviews` table; nothing leaves the machine.
+- **Navega como en el sitio oficial**: Departamento → Municipio → Zona → Puesto →
+  mesas. Cada tarjeta muestra tu avance (`X/Y verificadas`) y etiquetas por estado.
+- **Abre cualquier mesa**: su PDF se descarga bajo demanda si falta, y el modelo
+  de visión local lee los números solo para pre-llenar el formulario (una
+  propuesta que tú confirmas).
+- **Veredicto**: marca cada mesa Verificada / Anomalía / Dudosa. Los veredictos se
+  guardan en la tabla local `reviews`; nada sale de la máquina.
 
-### Reading handwriting (local vision)
+### Leer la letra manuscrita (visión local)
 
-Tesseract reads the printed labels but not the handwritten counts. For those,
-`vision.py` calls a **local** vision model via Ollama (`qwen2.5vl`), entirely
-on-machine. The blank/null/unmarked band is read from a tight, label-included
-crop (`crop_totals.py`) — full-page reads return 0 for that band. Every number
-is a guess the reviewer confirms against the PDF; vision misreads handwriting,
-so its output is a starting point, not a verdict.
+Tesseract lee los rótulos impresos pero no los conteos manuscritos. Para esos,
+`vision.py` llama a un modelo de visión **local** vía Ollama (`qwen2.5vl`),
+enteramente en la máquina. La banda de blanco/nulos/no-marcados se lee de un
+recorte ajustado que incluye los rótulos (`crop_totals.py`) — leerla de la hoja
+completa devuelve 0. Cada número es una propuesta que el revisor confirma contra
+el PDF; la visión lee mal la letra, así que su salida es un punto de partida, no
+un veredicto.
 
-## Files
+## Archivos
 
-| File | What it does |
+| Archivo | Qué hace |
 |---|---|
-| `config.py` | URLs, headers, and `pdf_url(node)` implementing the confirmed pattern |
-| `db.py` | SQLite schema and helpers (`polling_tables`, `findings`) for `data/pipeline.db` |
-| `inspect_meta.py` | Downloads and inspects the metadata JSON files |
-| `discover.py` | Generates `data/index.csv` (polling table -> tally URL -> local path) |
-| `import_index.py` | Loads `data/index.csv` into the SQLite database |
-| `verify_mapping.py` | Sanity-checks the index -> URL -> local path mapping |
-| `check_access.py` | Diagnoses whether plain Python passes the WAF; supports `cookies.txt` |
-| `download.py` | Stage 1 downloader: resumable, concurrent, validates `%PDF` |
-| `ocr.py` | Stage 2 OCR runner over downloaded PDFs |
-| `validate.py` | Stage 3 vote-sum check; flags mismatches for manual review |
-| `agent.py` | Orchestrates Stages 1–3 in a resumable loop |
-| `status.py` | Reports pipeline progress per stage from the database |
-| `report.py` | Generates the local report at `data/reports/summary.html` |
-| `browser_download.py` | Fallback download path using Playwright (a real browser) |
-| `vision.py` | Local vision reader (Ollama) for handwritten numbers + totals band |
-| `crop_totals.py` | Crops the labelled blank/null/unmarked/total band for vision |
-| `candidates.py` | Fixed master list of candidates + fuzzy name matching |
-| `runner.py` | In-process pipeline runner used by the review station |
-| `review_server.py` | Local web app: hierarchical browser + review station |
-| `consolidate.py` | Aggregates confirmed results across reviewed tables |
+| `config.py` | URLs, headers, y `pdf_url(node)` que implementa el patrón confirmado |
+| `db.py` | Esquema SQLite y ayudantes (`polling_tables`, `findings`) para `data/pipeline.db` |
+| `inspect_meta.py` | Descarga e inspecciona los archivos JSON de metadatos |
+| `discover.py` | Genera `data/index.csv` (mesa -> URL del acta -> ruta local) |
+| `import_index.py` | Carga `data/index.csv` en la base de datos SQLite |
+| `verify_mapping.py` | Verifica el mapeo índice -> URL -> ruta local |
+| `check_access.py` | Diagnostica si Python simple pasa el WAF; soporta `cookies.txt` |
+| `download.py` | Descargador de la Etapa 1: reanudable, concurrente, valida `%PDF` |
+| `ocr.py` | Corredor de OCR de la Etapa 2 sobre los PDF descargados |
+| `validate.py` | Cuadre de votos de la Etapa 3; marca discrepancias para revisión manual |
+| `agent.py` | Orquesta las Etapas 1–3 en un bucle reanudable |
+| `status.py` | Reporta el avance del pipeline por etapa desde la base de datos |
+| `report.py` | Genera el reporte local en `data/reports/summary.html` |
+| `browser_download.py` | Camino de descarga alternativo usando Playwright (un navegador real) |
+| `vision.py` | Lector de visión local (Ollama) para números manuscritos + banda de totales |
+| `crop_totals.py` | Recorta la banda rotulada de blanco/nulos/no-marcados/total para la visión |
+| `candidates.py` | Lista maestra fija de candidatos + emparejamiento difuso de nombres |
+| `runner.py` | Corredor del pipeline en proceso usado por la estación de revisión |
+| `review_server.py` | App web local: navegador jerárquico + estación de revisión |
+| `public_server.py` | App web pública: navegador + estación de entrada manual (sin visión) |
+| `build_public_index.py` | Construye `data/public_index.csv.gz` para la app web pública |
+| `consolidate.py` | Agrega los resultados confirmados de las mesas revisadas |
 
-## Design principles
+## Principios de diseño
 
-- **Local-only**: the database, the PDFs, and the reports stay on your machine.
-  Nothing is uploaded; the only outbound traffic is fetching the public PDFs.
-- **Resumable**: skips PDFs that are already downloaded and valid (`%PDF` magic
-  bytes); the per-stage SQLite status lets you stop and restart at any time.
-- **Respectful**: limited concurrency and pauses. This is public election
-  infrastructure; the pipeline must never overload it.
-- **Auditable**: `data/index.csv` links every PDF to its
-  department/municipality/zone/station/table, its transmission code, status, and
-  the original source URL.
-- **Robust**: the server returns `200 + text/html` (the SPA shell) for
-  nonexistent routes, so files are validated by **magic bytes**, never by HTTP
-  status code.
+- **Solo local**: la base de datos, los PDF y los reportes se quedan en tu
+  máquina. No se sube nada; el único tráfico de salida es traer los PDF públicos.
+- **Reanudable**: omite los PDF ya descargados y válidos (bytes mágicos `%PDF`);
+  el estado por etapa en SQLite te deja parar y reanudar en cualquier momento.
+- **Respetuoso**: concurrencia limitada y pausas. Es infraestructura electoral
+  pública; el pipeline nunca debe sobrecargarla.
+- **Auditable**: `data/index.csv` enlaza cada PDF con su
+  departamento/municipio/zona/puesto/mesa, su código de transmisión, estado, y la
+  URL original de la fuente.
+- **Robusto**: el servidor responde `200 + text/html` (la cáscara de la SPA) para
+  rutas inexistentes, así que los archivos se validan por **bytes mágicos**, nunca
+  por el código de estado HTTP.
 
-## Important: flagged forms need manual review, not "fraud confirmed"
+## Importante: las actas marcadas necesitan revisión manual, no son "fraude confirmado"
 
-A flagged tally sheet means **"needs manual review"** — it is **not** proof of
-fraud. OCR and digitization produce errors that look like anomalies; many
-mismatches come from the OCR step, not from the tally sheets themselves. Every
-finding links back to the original PDF so a human can verify it directly. This
-discipline is what makes the work credible rather than dismissible.
+Una acta marcada significa **"necesita revisión manual"** — **no** es prueba de
+fraude. El OCR y la digitalización producen errores que parecen anomalías; muchas
+discrepancias vienen de la etapa de lectura, no de las actas mismas. Cada hallazgo
+enlaza al PDF original para que una persona lo verifique directamente. Esta
+disciplina es lo que hace el trabajo creíble en lugar de descartable.

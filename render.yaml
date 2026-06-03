@@ -1,0 +1,16 @@
+# Render.com blueprint for the public E14 review web app.
+# Free, zero-install for visitors. Connect this repo at https://render.com,
+# pick "Blueprint", and Render reads this file. No vision/GPU needed.
+services:
+  - type: web
+    name: e14-colombia-audit
+    runtime: python
+    plan: free
+    # public_server.py uses only the Python standard library, so there is
+    # nothing to install. Pip is run anyway to satisfy Render's build step.
+    buildCommand: "python --version"
+    startCommand: "python public_server.py"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"

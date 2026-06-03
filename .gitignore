@@ -1,7 +1,12 @@
-# Generated/downloaded data — never commit (regenerate by running the pipeline)
-data/
+# Generated/downloaded data — never commit (regenerate by running the pipeline).
+# Ignore the CONTENTS of data/ (not the dir itself) so the exception below works:
+# you cannot un-ignore a file inside a fully-ignored directory.
+data/*
 *.db
 *.csv
+
+# ...EXCEPT the minimal compressed index the public web app ships with.
+!data/public_index.csv.gz
 
 # Secrets / session
 cookies.txt
