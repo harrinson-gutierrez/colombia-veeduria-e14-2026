@@ -632,7 +632,7 @@ def station_page(conn, dept, code):
 
     row = conn.execute(
         """SELECT m.transmission_code, m.department_code, m.department_name,
-                  m.municipality_code, m.station_code, m.table_number,
+                  m.municipality_code, m.zone_code, m.station_code, m.table_number,
                   m.download_status, m.pdf_url, m.ocr_text,
                   r.verdict, r.note
            FROM polling_tables m
@@ -698,8 +698,9 @@ def station_page(conn, dept, code):
 
     note = esc(cur["note"])
     loc = (f"{esc(cur['department_name'])} &middot; mun {esc(cur['municipality_code'])}"
-           f" &middot; station {esc(cur['station_code'])}"
-           f" &middot; table {esc(cur['table_number'])}")
+           f" &middot; zona {esc(cur['zone_code'])}"
+           f" &middot; puesto {esc(cur['station_code'])}"
+           f" &middot; mesa {esc(cur['table_number'])}")
     has_pdf = cur["download_status"] == "ok"
     dept_in = f'<input type="hidden" name="dept" value="{esc(dept)}">' if dept else ''
 
