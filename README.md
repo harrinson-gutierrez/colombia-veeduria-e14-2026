@@ -1,10 +1,21 @@
 # vote-verify
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+
 vote-verify is a local-only pipeline that downloads scanned vote tally sheets,
 runs OCR on them, validates that the reported vote sums are internally
 consistent, and produces local reports. It is built to make the audit of
 published election results **transparent and reproducible** — entirely on your
 own machine.
+
+> **A flag means "needs manual review", not "fraud".** Vision and OCR misread
+> handwriting, so mismatches are often reading errors. Every finding links back
+> to the original PDF for a human to verify. See the note at the end.
+
+**Quick start:** install the tools (see [INSTALL_OCR.md](INSTALL_OCR.md)), then
+follow [Pipeline flow](#pipeline-flow). To review forms in a browser, jump to
+[Review station](#review-station-human-in-the-loop).
 
 The first supported source is the **E14 tally form** published by Colombia's
 Registraduría on its public results website. The architecture is
