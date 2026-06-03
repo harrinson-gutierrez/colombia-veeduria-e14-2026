@@ -1,0 +1,33 @@
+# Generated/downloaded data — never commit (regenerate by running the pipeline)
+data/
+*.db
+*.csv
+
+# Secrets / session
+cookies.txt
+*.cookies
+
+# Bundled third-party model data (user downloads it; see INSTALL_OCR.md)
+**/tessdata/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+
+# Playwright / browser
+.playwright-mcp/
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,12 @@
+# Core pipeline (download + index) uses only the Python standard library.
+# These are needed for the OCR / vision stages and the review station.
+
+# OCR label anchoring + image handling (Stage 2 / totals-band crop)
+pytesseract>=0.3.10
+pdf2image>=1.17.0
+Pillow>=10.0.0
+
+# Optional: browser-based download fallback when a WAF blocks plain Python.
+# Install only if check_access.py tells you to:
+#   pip install playwright && python -m playwright install chromium
+# playwright>=1.40
