@@ -1,4 +1,4 @@
-# Arquitectura — e14-colombia-audit
+# Arquitectura — colombia-veeduria-e14-2026
 
 **🇪🇸 Español** · [🇬🇧 English](ARCHITECTURE.en.md)
 

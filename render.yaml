@@ -3,7 +3,7 @@
 # pick "Blueprint", and Render reads this file. No vision/GPU needed.
 services:
   - type: web
-    name: e14-colombia-audit
+    name: colombia-veeduria-e14-2026
     runtime: python
     plan: free
     # public_server.py uses only the Python standard library, so there is
