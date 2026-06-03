@@ -1,84 +1,97 @@
-# Architecture — vote-verify
+# Arquitectura — e14-colombia-audit
 
-A local-only pipeline that runs on a single machine. There is no cloud, no
-sync, and no public service. A SQLite database is the single source of truth,
-the downloaded PDFs live on disk, and reports are generated locally.
+El **pipeline local** corre en una sola máquina. No hay nube, ni sincronización,
+ni servicio público. Una base de datos SQLite es la única fuente de verdad, los
+PDF descargados viven en disco, y los reportes se generan localmente.
+
+(Aparte está la **app web pública** `public_server.py`, que sí se puede
+desplegar; ver la sección al final.)
 
 ```
-┌──────────────────────────── ONE MACHINE (local-only) ─────────────────────────────┐
+┌──────────────────────────── UNA MÁQUINA (solo local) ─────────────────────────────┐
 │                                                                                    │
-│   agent.py (resumable loop)                                                        │
-│     ├─ Stage 1  download.py   fetch PDFs    ──┐                                     │
-│     ├─ Stage 2  ocr.py        OCR           │   SQLite (data/pipeline.db)           │
-│     └─ Stage 3  validate.py   vote-sum check ─┘   single source of truth            │
+│   agent.py (bucle reanudable)                                                      │
+│     ├─ Etapa 1  download.py   trae PDFs      ──┐                                    │
+│     ├─ Etapa 2  ocr.py        OCR / visión   │   SQLite (data/pipeline.db)          │
+│     └─ Etapa 3  validate.py   cuadre de votos ─┘   única fuente de verdad           │
 │                          │                                                          │
 │                          ▼                                                          │
-│   PDFs on disk: data/forms/                                                         │
+│   PDFs en disco: data/forms/                                                        │
 │                          │                                                          │
 │                          ▼                                                          │
-│   report.py  ─────────►  data/reports/summary.html  (local report, EN/ES)          │
+│   report.py  ─────────►  data/reports/summary.html  (reporte local, EN/ES)         │
 │                                                                                    │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Everything stays on the machine: the PDFs, the database, and the reports.
-Nothing is uploaded anywhere.
+Todo se queda en la máquina: los PDF, la base de datos y los reportes. No se
+sube nada a ningún lado.
 
-## Data model
+## Modelo de datos
 
-`data/pipeline.db` holds one row per polling table with a **per-stage status**:
+`data/pipeline.db` guarda una fila por mesa con un **estado por etapa**:
 
 - `download_status`  — pending / ok / failed / not_pdf
 - `ocr_status`       — pending / ok / failed
-- `validate_status`  — pending / ok / flagged / failed
+- `validation_status` — pending / ok / flagged / failed
 
-Each stage only advances its own status field, so progress for one stage never
-overwrites another. Findings (mismatches and OCR confidence) are stored
-alongside the polling table and always reference the original PDF in
+Cada etapa solo avanza su propio campo de estado, así que el progreso de una
+etapa nunca sobreescribe el de otra. Los hallazgos (discrepancias y confianza de
+lectura) se guardan junto a la mesa y siempre referencian el PDF original en
 `data/forms/`.
 
-## Agent loop
+## Bucle del agente
 
 ```
-each cycle:
-  1. download  batch of pending/failed polling tables   -> mark ok/failed/not_pdf
-  2. ocr       batch where download_status = ok          -> store text, mark ok/failed
-  3. validate  batch where ocr_status = ok               -> vote-sum check, mark flagged
-  4. sleep N seconds  (respectful to the source server)
+cada ciclo:
+  1. download  lote de mesas pending/failed              -> marca ok/failed/not_pdf
+  2. ocr       lote donde download_status = ok            -> guarda lectura, marca ok/failed
+  3. validate  lote donde ocr_status = ok                -> cuadre de votos, marca flagged
+  4. dormir N segundos  (respetuoso con el servidor fuente)
 ```
 
-Idempotent: each step only picks up pending work. Killing and restarting the
-agent resumes from the SQLite status without losing or repeating progress.
-Reports are produced on demand by `report.py` against the same database.
+Idempotente: cada paso solo toma trabajo pendiente. Matar y reiniciar el agente
+reanuda desde el estado en SQLite sin perder ni repetir progreso. Los reportes se
+producen bajo demanda con `report.py` contra la misma base de datos.
 
-## Politeness toward the source
+## Cortesía con la fuente
 
-The downloader uses limited concurrency and pauses between requests. The data
-comes from public election infrastructure published by Colombia's
-Registraduría; the pipeline must never overload it. Already-downloaded, valid
-PDFs are skipped, so re-runs add no unnecessary load.
+El descargador usa concurrencia limitada y pausas entre peticiones. Los datos
+vienen de infraestructura electoral pública publicada por la Registraduría de
+Colombia; el pipeline nunca debe sobrecargarla. Los PDF ya descargados y válidos
+se omiten, así que volver a correr no agrega carga innecesaria.
 
-## Privacy
+## Privacidad
 
-Local-only by design. The pipeline does not upload anything, does not call any
-external service of its own, and does not phone home. The only outbound traffic
-is fetching the public PDFs from the source. All results — the database, the
-PDFs, and the generated reports — stay on the operator's machine. The operator
-alone decides whether and how to share any generated report.
+Solo local por diseño. El pipeline no sube nada, no llama a ningún servicio
+externo propio, y no "telefonea a casa". El único tráfico de salida es traer los
+PDF públicos de la fuente. Todos los resultados — la base de datos, los PDF y los
+reportes generados — se quedan en la máquina del operador. Solo el operador
+decide si comparte algún reporte y cómo.
 
-## Data honesty and safety (non-negotiable)
+## Honestidad y seguridad de los datos (no negociable)
 
-- A `flagged` polling table means **"needs manual review"**, NOT "fraud".
-- Every finding stores the OCR confidence and links to the original PDF.
-- Reports must label figures as *automated readings subject to verification*.
-- Handwriting OCR fails; many mismatches will come from the OCR, not from the
-  tally sheets themselves.
+- Una mesa `flagged` significa **"necesita revisión manual"**, NO "fraude".
+- Cada hallazgo guarda la confianza de lectura y enlaza al PDF original.
+- Los reportes deben etiquetar las cifras como *lecturas automáticas sujetas a verificación*.
+- El OCR de letra manuscrita falla; muchas discrepancias vendrán de la lectura,
+  no de las actas mismas.
 
-## Implementation status
+## App web pública (`public_server.py`)
 
-- [x] Stage 1 Download (SQLite, resumable, retryable)
-- [x] SQLite management (db / import_index / status)
-- [x] Stage 2 OCR built (full page) — needs Tesseract installed
-- [x] Stage 3 validate.py skeleton built — needs real-layout tuning
-- [x] agent.py orchestrator loop
-- [x] report.py local report generator
+Camino alterno para revisión ciudadana sin instalar nada (ver el README). No usa
+visión, GPU ni base de datos: lee un índice comprimido versionado, trae cada PDF
+por proxy bajo demanda desde la Registraduría, y guarda los veredictos del
+visitante en su propio navegador (`localStorage`). Se despliega gratis (ej.
+Render) porque usa solo la librería estándar de Python.
+
+## Estado de implementación
+
+- [x] Etapa 1 Descarga (SQLite, reanudable, reintentable)
+- [x] Gestión de SQLite (db / import_index / status)
+- [x] Etapa 2 Lectura: OCR (hoja completa) + visión local (Ollama qwen2.5vl)
+- [x] Etapa 3 validate.py: cuadre de votos, marca discrepancias
+- [x] Bucle orquestador agent.py
+- [x] Generador de reporte local report.py
+- [x] Estación de revisión (review_server.py): navegador jerárquico + veredictos
+- [x] App web pública (public_server.py): revisión ciudadana sin instalar
