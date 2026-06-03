@@ -46,6 +46,32 @@ Everything runs locally. A SQLite database (`data/pipeline.db`) is the single
 source of truth, the PDFs live in `data/forms`, and reports are written to
 `data/reports/`. Nothing is uploaded.
 
+## Two ways to run it
+
+| | **Local pipeline** (this repo's main flow) | **Public web app** (`public_server.py`) |
+|---|---|---|
+| For | one auditor with a capable PC | anyone, no install |
+| Vision | local Ollama auto-reads the numbers | none — the person types what they see |
+| Install | Python + Tesseract + Poppler + Ollama | nothing (visitor just opens a URL) |
+| Storage | SQLite + downloaded PDFs on disk | none server-side; verdicts live in the visitor's browser |
+| PDFs | downloaded and cached | proxied on demand from the Registraduría |
+| Hosting | your machine | any free Python host (e.g. Render) |
+
+### Run the public web app
+
+Zero install for visitors. It reads a small committed index
+(`data/public_index.csv.gz`), proxies each official PDF on demand, and saves the
+visitor's typed numbers and verdicts in their own browser (`localStorage`).
+
+```bash
+python build_public_index.py     # one-time: builds data/public_index.csv.gz
+python public_server.py          # serves http://localhost:8080
+```
+
+**Deploy free on Render:** push this repo, create a *Blueprint* service at
+render.com — it reads `render.yaml`. No GPU, no database, no API keys. The app
+sleeps after inactivity on the free tier (first visit takes ~30 s to wake).
+
 ## Source site layout (empirically confirmed)
 
 - **Metadata**: static JSON files served from `/assets/temis/divipol_json/`. The
