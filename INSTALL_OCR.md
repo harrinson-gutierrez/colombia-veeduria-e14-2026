@@ -1,5 +1,8 @@
 # Instalar dependencias (Windows)
 
+**🇪🇸 Español** · [🇬🇧 English](INSTALL_OCR.en.md)
+
+
 El pipeline necesita tres herramientas externas además de Python:
 
 1. **Tesseract** — lee los rótulos impresos (para anclar el recorte de la banda de totales).

@@ -1,5 +1,7 @@
 # e14-colombia-audit
 
+**🇪🇸 Español** · [🇬🇧 English](README.en.md)
+
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![País](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)

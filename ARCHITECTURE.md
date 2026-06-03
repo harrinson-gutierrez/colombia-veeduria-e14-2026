@@ -1,5 +1,8 @@
 # Arquitectura — e14-colombia-audit
 
+**🇪🇸 Español** · [🇬🇧 English](ARCHITECTURE.en.md)
+
+
 El **pipeline local** corre en una sola máquina. No hay nube, ni sincronización,
 ni servicio público. Una base de datos SQLite es la única fuente de verdad, los
 PDF descargados viven en disco, y los reportes se generan localmente.
