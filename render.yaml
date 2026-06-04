@@ -14,3 +14,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.0"
+      # Supabase connection for login + consensus + the official-data dashboard.
+      # sync:false means Render prompts you for the value on deploy; it is NOT
+      # stored in this repo. Use the PUBLISHABLE key (safe in the browser), never
+      # the service_role key.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
