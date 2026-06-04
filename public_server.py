@@ -497,8 +497,6 @@ def mesa_page(sel: dict) -> str:
         Cargando el acta…</div>
       <iframe class="pdfframe" id="pdfframe" title="Acta E14" style="display:none"></iframe>
     </div>
-    <div class="pdffallback">¿No se ve el acta?
-      <a href="{esc(src_url)}" target="_blank" rel="noopener">ábrela directo en una pestaña &#8599;</a></div>
   </section>
   <section class="form">
     <!-- login / consensus panel goes at the TOP so it is always visible -->
@@ -522,37 +520,37 @@ def mesa_page(sel: dict) -> str:
   </section>
 </div>
 <script>
-// Showing the acta has two paths:
-//  1) Our server proxy (embeds nicely, strips X-Frame-Options). Works when the
-//     host can reach the source — but datacenter IPs (Render) are throttled by
-//     the source's CDN, so we only WAIT A FEW SECONDS for it.
-//  2) Direct load from the VISITOR's browser (their residential IP usually
-//     passes). We can't iframe it (X-Frame-Options), so we use <object>, and
-//     always keep a prominent "open in a new tab" link as the sure path.
+// Showing the acta:
+//  1) Try our server proxy briefly — it embeds nicely (strips X-Frame-Options)
+//     and works when the host can reach the source (local use). From a
+//     datacenter IP (Render) the source CDN throttles us, so we wait only ~7s.
+//  2) If the proxy doesn't win, the official PDF CANNOT be embedded directly
+//     (the source sets X-Frame-Options, blocking iframe AND object from another
+//     origin). The only reliable view is opening it in its own tab. So we show a
+//     big, clear call-to-action to open the acta — not a blank embed.
 (function(){{
   const PROXY={json.dumps(pdf_proxy)}, SRC={json.dumps(src_url)};
   const msg=document.getElementById('pdfmsg'), frame=document.getElementById('pdfframe');
-  function direct(){{
-    // The visitor's own browser fetches the official PDF directly.
-    msg.innerHTML='';
-    const obj=document.createElement('object');
-    obj.data=SRC; obj.type='application/pdf';
-    obj.style.cssText='width:100%;height:70vh;border:0';
-    const alt=document.createElement('div');
-    alt.style.cssText='padding:1rem;font-size:.9rem;color:var(--soft)';
-    alt.innerHTML='Si el acta no se muestra arriba, '+
-      '<a href="'+SRC+'" target="_blank" rel="noopener">ábrela en una pestaña nueva ↗</a>'+
-      ' y escribe los números igual.';
-    obj.append(alt); msg.append(obj);
+  function openPanel(){{
+    msg.style.padding='2rem 1.4rem'; msg.style.textAlign='center';
+    msg.replaceChildren();
+    const a=document.createElement('a');
+    a.href=SRC; a.target='_blank'; a.rel='noopener'; a.className='cta';
+    a.textContent='Abrir el acta E14 ↗';
+    const p=document.createElement('p');
+    p.style.cssText='margin:1rem auto 0;max-width:42ch;color:var(--soft);font-size:.88rem';
+    p.textContent='La Registraduría no permite mostrar el acta dentro de otra '+
+      'página, así que se abre en su propia pestaña. Déjala abierta al lado y '+
+      'escribe aquí los números que veas.';
+    msg.append(a, p);
   }}
-  // Race the proxy against a short timeout; whichever loses, fall back to direct.
   const ctrl=new AbortController();
   const t=setTimeout(()=>ctrl.abort(), 7000);
   fetch(PROXY,{{signal:ctrl.signal}}).then(r=>{{
     clearTimeout(t);
     if(r.ok){{ frame.src=PROXY; frame.style.display='block'; msg.style.display='none'; }}
-    else direct();
-  }}).catch(()=>{{ clearTimeout(t); direct(); }});
+    else openPanel();
+  }}).catch(()=>{{ clearTimeout(t); openPanel(); }});
 }})();
 const CODE={json.dumps(code)};
 const KEY='e14_'+CODE;
