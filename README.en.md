@@ -2,6 +2,12 @@
 
 [🇪🇸 Español](README.md) · **🇬🇧 English**
 
+### 🟢 Live app: **https://colombia-veeduria-e14-2026.onrender.com**
+
+> Open it in your browser, no install. Anyone can review the tally sheets, type
+> the numbers they see, and add their report to the citizen consensus.
+
+[![Live app](https://img.shields.io/badge/Live%20app-Open-10b981?logo=render&logoColor=white)](https://colombia-veeduria-e14-2026.onrender.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Country](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)

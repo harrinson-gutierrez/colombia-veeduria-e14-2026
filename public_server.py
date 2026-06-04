@@ -382,7 +382,10 @@ def _shell(title: str, body: str, active: str = "", note: bool = True) -> str:
    <div class="sect">Acerca de</div>
    <a href="https://github.com/harrinson-gutierrez/colombia-veeduria-e14-2026" target="_blank" rel="noopener">Código abierto</a>
    <div class="spacer"></div>
-   <div class="foot">Auditoría ciudadana · Colombia 2026.<br>Tus datos quedan en tu navegador.</div>
+   <div class="foot">Auditoría ciudadana · Colombia 2026.<br>Tus datos quedan en tu navegador.
+     <br><a id="shareurl" href="/" style="color:#6ee7b7;text-decoration:none;word-break:break-all"></a></div>
+   <script>(function(){{var s=document.getElementById('shareurl');
+     if(s){{s.textContent=location.host;s.href=location.origin;}}}})();</script>
  </nav>
  <div class="main">
   <div class="topbar"><h1>{esc(title)}</h1>
