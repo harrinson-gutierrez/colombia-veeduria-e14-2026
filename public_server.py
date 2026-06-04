@@ -492,7 +492,11 @@ def mesa_page(sel: dict) -> str:
       <span>Acta E14 oficial</span>
       <a href="{esc(src_url)}" target="_blank" rel="noopener">Abrir en pestaña nueva &#8599;</a>
     </div>
-    <iframe class="pdfframe" src="{pdf_proxy}" title="Acta E14"></iframe>
+    <div id="pdfwrap" style="position:relative;flex:1">
+      <div id="pdfmsg" style="padding:1.2rem;font-size:.9rem;color:var(--soft)">
+        Cargando el acta… (puede tardar unos segundos)</div>
+      <iframe class="pdfframe" id="pdfframe" title="Acta E14" style="display:none"></iframe>
+    </div>
     <div class="pdffallback">¿No se ve el acta?
       <a href="{esc(src_url)}" target="_blank" rel="noopener">ábrela directo en una pestaña &#8599;</a></div>
   </section>
@@ -518,6 +522,23 @@ def mesa_page(sel: dict) -> str:
   </section>
 </div>
 <script>
+// Load the acta through our proxy. We probe with fetch so we can show a clear
+// message if the source times out / blocks (the iframe alone would just sit
+// blank). On success, point the iframe at the same (now-warm) proxy URL.
+(function(){{
+  const PROXY={json.dumps(pdf_proxy)}, SRC={json.dumps(src_url)};
+  const msg=document.getElementById('pdfmsg'), frame=document.getElementById('pdfframe');
+  // GET (not HEAD): the server caches the fetched PDF, so the iframe's own
+  // request is then served instantly from cache — no double download.
+  fetch(PROXY).then(r=>{{
+    if(r.ok){{ frame.src=PROXY; frame.style.display='block'; msg.style.display='none'; }}
+    else throw new Error('proxy '+r.status);
+  }}).catch(()=>{{
+    msg.innerHTML='No pudimos cargar el acta aquí (la fuente oficial respondió '+
+      'lento o bloqueó la descarga). <a href="'+SRC+'" target="_blank" rel="noopener">'+
+      'Ábrela directo en una pestaña nueva ↗</a> y escribe los números igual.';
+  }});
+}})();
 const CODE={json.dumps(code)};
 const KEY='e14_'+CODE;
 const inputs=[...document.querySelectorAll('.numin')];
@@ -648,29 +669,56 @@ def tabla_page() -> str:
 PDF_MAGIC = b"%PDF-"
 
 
+# From a datacenter (e.g. Render) the Registraduria is much slower to respond
+# than from a residential Colombian IP, so the default read timeout is generous
+# and overridable. Set PDF_TIMEOUT (seconds) to tune it on the host.
+PDF_TIMEOUT = float(os.environ.get("PDF_TIMEOUT", "45"))
+PDF_TRIES = int(os.environ.get("PDF_TRIES", "2"))
+
+# Small in-memory LRU cache: a fetched acta is reused for the iframe's own
+# request (the page probes with HEAD first) and for the next visitor on the
+# same instance. Bounded so Render Free's small RAM is never overwhelmed.
+import collections  # noqa: E402
+_PDF_CACHE: "collections.OrderedDict[str, bytes]" = collections.OrderedDict()
+_PDF_CACHE_MAX = int(os.environ.get("PDF_CACHE_MAX", "40"))
+
+
 def fetch_pdf(url: str) -> bytes | None:
     """Fetch one tally PDF from the source. Only allow the official host.
-    Prints a diagnostic line so failures are visible in the server console."""
+    Caches successes in memory, retries on timeout (the source is slow/flaky
+    from datacenter IPs), and logs each attempt so failures show in the logs."""
     if not url.startswith(SOURCE_HOST + "/"):
         print(f"[pdf] rejected non-source url: {url[:60]}", flush=True)
         return None
+    cached = _PDF_CACHE.get(url)
+    if cached is not None:
+        _PDF_CACHE.move_to_end(url)
+        return cached
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Referer": SOURCE_HOST + "/home",
         "Accept": "application/pdf,*/*",
     })
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = r.read()
-            ctype = r.headers.get("Content-Type", "?")
-        head = data[:5]
-        ok = head == PDF_MAGIC
-        print(f"[pdf] {'OK' if ok else 'NOT-PDF'} {len(data)}b ctype={ctype} "
-              f"head={head!r} url=...{url[-40:]}", flush=True)
-        return data if ok else None
-    except Exception as exc:  # noqa: BLE001
-        print(f"[pdf] ERROR {type(exc).__name__}: {exc} url=...{url[-40:]}", flush=True)
-        return None
+    for attempt in range(1, PDF_TRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=PDF_TIMEOUT) as r:
+                data = r.read()
+                ctype = r.headers.get("Content-Type", "?")
+            head = data[:5]
+            ok = head == PDF_MAGIC
+            print(f"[pdf] {'OK' if ok else 'NOT-PDF'} try={attempt} {len(data)}b "
+                  f"ctype={ctype} head={head!r} url=...{url[-40:]}", flush=True)
+            if ok:
+                _PDF_CACHE[url] = data
+                _PDF_CACHE.move_to_end(url)
+                while len(_PDF_CACHE) > _PDF_CACHE_MAX:
+                    _PDF_CACHE.popitem(last=False)
+                return data
+            return None  # got a response but not a PDF (block page); don't retry
+        except Exception as exc:  # noqa: BLE001
+            print(f"[pdf] ERROR try={attempt}/{PDF_TRIES} {type(exc).__name__}: "
+                  f"{exc} url=...{url[-40:]}", flush=True)
+    return None
 
 
 class Handler(BaseHTTPRequestHandler):
