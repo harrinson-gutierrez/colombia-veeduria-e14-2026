@@ -144,6 +144,10 @@ python review_server.py --dept 16     # serves http://127.0.0.1:8765
   vision model auto-reads the numbers to pre-fill the form (a guess you confirm).
 - **Verdict**: mark each table Verified / Anomaly / Unclear. Verdicts are stored
   in the local `reviews` table; nothing leaves the machine.
+- **Official-data dashboard**: when Supabase is configured, the sidebar shows an
+  "Análisis oficial" section (Summary, Anomalies, Process quality, All tables) —
+  the same four views as the public app, to prioritize which tables to review
+  first. They live in `dashboard_views.py`, shared by both apps.
 
 ### Reading handwriting (local vision)
 
@@ -176,7 +180,9 @@ so its output is a starting point, not a verdict.
 | `crop_totals.py` | Crops the labelled blank/null/unmarked/total band for vision |
 | `candidates.py` | Fixed master list of candidates + fuzzy name matching |
 | `runner.py` | In-process pipeline runner used by the review station |
-| `review_server.py` | Local web app: hierarchical browser + review station |
+| `review_server.py` | Local web app: hierarchical browser + review station + official-data dashboard |
+| `public_server.py` | Public web app: browser + manual entry + consensus (Supabase) + official-data dashboard |
+| `dashboard_views.py` | The four dashboard views (summary, anomalies, quality, table), shared by both apps |
 | `consolidate.py` | Aggregates confirmed results across reviewed tables |
 
 ## Design principles
