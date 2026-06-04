@@ -10,6 +10,8 @@ data/*
 !data/public_index.csv.gz
 !data/official/
 !data/official/official_by_mesa.csv.gz
+# but NOT the throwaway SQL batches used to bulk-load official_data once.
+data/official/batches/
 
 # Secrets / session
 .env
