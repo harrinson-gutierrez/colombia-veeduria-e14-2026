@@ -24,6 +24,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import config
+import dashboard_views
 import db
 from runner import Runner
 
@@ -264,6 +265,81 @@ def _level_label(level, gid, r):
     return str(gid)
 
 
+def _dash_links():
+    """The 'Análisis oficial' section links, or '' if Supabase isn't configured.
+    Used by shells that build their own <nav> (the station shell)."""
+    if not (config.SUPABASE_URL and config.SUPABASE_KEY):
+        return ""
+    return ('<div class="sect">Análisis oficial</div>'
+            '<a href="/resumen">Resumen</a><a href="/anomalias">Anomalías</a>'
+            '<a href="/calidad">Calidad del proceso</a><a href="/tabla">Todas las mesas</a>')
+
+
+def _rail(active=""):
+    """Shared sidebar. `active` is the path of the current page (for highlight)."""
+    def a(href, label):
+        on = " class=\"on\"" if href == active else ""
+        return f'<a href="{href}"{on}>{esc(label)}</a>'
+    dash = ""
+    if config.SUPABASE_URL and config.SUPABASE_KEY:
+        dash = ('<div class="sect">Análisis oficial</div>'
+                + a("/resumen", "Resumen") + a("/anomalias", "Anomalías")
+                + a("/calidad", "Calidad del proceso") + a("/tabla", "Todas las mesas"))
+    return f"""<nav class="rail">
+  <div class="brand">Veeduría E14<span class="dot">.</span></div>
+  {a('/station', 'Estación de revisión')}
+  {a('/browse', 'Navegar mesas')}
+  {dash}
+  <div class="spacer"></div>
+  <div class="foot">Estación local · Colombia 2026.</div>
+</nav>"""
+
+
+def _dashboard_shell(active, title, body):
+    """Wrap a shared dashboard view (from dashboard_views) in the review shell."""
+    return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(title)} · Veeduría E14</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+ :root{{
+   --bg:#0c1116; --panel:#11181f; --rail:#0a0f14;
+   --card:#ffffff; --ink:#0e1419; --soft:#5d6b78; --line:#eceff2;
+   --brand:#10b981; --brand-d:#059669; --brand-soft:#e7f7f1;
+   --flag:#d97706; --flag-soft:#fff7ed; --bad:#dc2626; --good:#10b981;
+   --shadow:0 1px 2px rgba(13,20,25,.04), 0 12px 28px -16px rgba(13,20,25,.25);
+ }}
+ *{{box-sizing:border-box}}
+ body{{margin:0;font-family:'Inter Tight',system-ui,sans-serif;background:#f6f8f9;color:var(--ink);
+   -webkit-font-smoothing:antialiased;line-height:1.5}}
+ a{{color:var(--brand-d)}}
+ .topbar{{background:#fff;border-bottom:1px solid var(--line);padding:1rem 1.6rem;display:flex;align-items:center;gap:1rem}}
+ .topbar h1{{font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem;margin:0;letter-spacing:-.01em}}
+ .topbar .meta{{margin-left:auto;font-size:.8rem;color:var(--soft)}}
+ .rail{{width:240px;flex:none;background:#0a0f14;color:#cdd6df;padding:1.3rem 1rem;
+   display:flex;flex-direction:column;gap:.3rem;position:sticky;top:0;height:100vh}}
+ .rail .brand{{font-family:'Fraunces',serif;font-weight:600;font-size:1.4rem;color:#fff;padding:.2rem .6rem 1rem}}
+ .rail .brand .dot{{color:var(--brand)}}
+ .rail .sect{{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#5f6e7b;padding:1rem .7rem .35rem}}
+ .rail a{{display:block;color:#cdd6df;text-decoration:none;padding:.55rem .7rem;border-radius:9px;font-size:.92rem}}
+ .rail a:hover{{background:#18222c;color:#fff}}
+ .rail a.on{{background:var(--brand);color:#06231a;font-weight:600}}
+ .rail .spacer{{flex:1}}
+ .rail .foot{{font-size:.72rem;color:#566472;padding:.6rem .7rem;border-top:1px solid #1b2630}}
+ .app{{display:flex;min-height:100vh}} .main{{flex:1;min-width:0}}
+{dashboard_views.DASHBOARD_CSS}
+</style></head><body>
+<div class="app">
+{_rail(active)}
+<div class="main">
+  <div class="topbar"><h1>{esc(title)}</h1><span class="meta">Actas E14 presidenciales</span></div>
+  {body}
+</div></div>
+</body></html>"""
+
+
 def _browse_shell(heading, crumb_html, body):
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -317,19 +393,17 @@ def _browse_shell(heading, crumb_html, body):
    display:flex;flex-direction:column;gap:.3rem;position:sticky;top:0;height:100vh}}
  .rail .brand{{font-family:'Fraunces',serif;font-weight:600;font-size:1.4rem;color:#fff;padding:.2rem .6rem 1rem}}
  .rail .brand .dot{{color:var(--brand,#10b981)}}
+ .rail .sect{{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#5f6e7b;padding:1rem .7rem .35rem}}
  .rail a{{display:block;color:#cdd6df;text-decoration:none;padding:.55rem .7rem;border-radius:9px;font-size:.92rem}}
- .rail a:hover{{background:#18222c;color:#fff}} .rail .spacer{{flex:1}}
+ .rail a:hover{{background:#18222c;color:#fff}}
+ .rail a.on{{background:var(--brand);color:#06231a;font-weight:600}}
+ .rail .spacer{{flex:1}}
  .rail .foot{{font-size:.72rem;color:#566472;padding:.6rem .7rem;border-top:1px solid #1b2630}}
  .app{{display:flex;min-height:100vh}} .main{{flex:1;min-width:0}}
+{dashboard_views.DASHBOARD_CSS}
 </style></head><body>
 <div class="app">
-<nav class="rail">
-  <div class="brand">Veeduría E14<span class="dot">.</span></div>
-  <a href="/station">Estación de revisión</a>
-  <a href="/browse">Navegar mesas</a>
-  <div class="spacer"></div>
-  <div class="foot">Estación local · Colombia 2026.</div>
-</nav>
+{_rail('/browse')}
 <div class="main">
 <div class="crumbs">{crumb_html}</div>
 <h2>{esc(heading)}</h2>
@@ -1041,6 +1115,7 @@ def station_shell(body, dept, code, total_dl, reviewed, prefilled=False):
  .rail .sect{{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#5f6e7b;padding:1rem .7rem .35rem}}
  .rail a{{display:block;color:#cdd6df;text-decoration:none;padding:.55rem .7rem;border-radius:9px;font-size:.92rem}}
  .rail a:hover{{background:#18222c;color:#fff}}
+ .rail a.on{{background:var(--brand);color:#06231a;font-weight:600}}
  .rail .spacer{{flex:1}}
  .rail .foot{{font-size:.72rem;color:#566472;padding:.6rem .7rem;border-top:1px solid #1b2630}}
  .app{{display:flex;min-height:100vh}} .main{{flex:1;min-width:0}}
@@ -1051,8 +1126,9 @@ def station_shell(body, dept, code, total_dl, reviewed, prefilled=False):
 <div class="app">
 <nav class="rail">
   <div class="brand">Veeduría E14<span class="dot">.</span></div>
-  <a href="/station">Estación de revisión</a>
+  <a href="/station" class="on">Estación de revisión</a>
   <a href="/browse">Navegar mesas</a>
+  {_dash_links()}
   <div class="sect">Pipeline</div>
   <div class="spacer"></div>
   <div class="foot">Estación local · con visión (Ollama).<br>Colombia 2026.</div>
@@ -1504,6 +1580,14 @@ class Handler(BaseHTTPRequestHandler):
                     qs.get("zone", [""])[0] or None,
                     qs.get("station", [""])[0] or None,
                 )
+            return self._send(200, "text/html; charset=utf-8", out.encode("utf-8"))
+        if parsed.path in ("/resumen", "/anomalias", "/calidad", "/tabla"):
+            fn = {"/resumen": dashboard_views.resumen_body,
+                  "/anomalias": dashboard_views.anomalias_body,
+                  "/calidad": dashboard_views.calidad_body,
+                  "/tabla": dashboard_views.tabla_body}[parsed.path]
+            title, body = fn(config.SUPABASE_URL, config.SUPABASE_KEY)
+            out = _dashboard_shell(parsed.path, title, body)
             return self._send(200, "text/html; charset=utf-8", out.encode("utf-8"))
         if parsed.path == "/state":
             data = json.dumps(RUNNER.snapshot()).encode("utf-8")
