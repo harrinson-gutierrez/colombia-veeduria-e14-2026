@@ -75,8 +75,12 @@ fuente de verdad, los PDF viven en `data/forms`, y los reportes se escriben en
 | Almacenamiento | SQLite + PDF descargados en disco | veredictos en el navegador del visitante; reportes y consenso en Supabase (opcional) |
 | PDF | descargados y cacheados | traídos por proxy bajo demanda desde la Registraduría |
 | Colaboración | un solo auditor | **consenso entre varias personas** (una mesa se confirma cuando ≥3 coinciden) |
-| Análisis oficial | reporte HTML local | **dashboard en vivo** (resumen, anomalías, calidad, tabla) |
+| Análisis oficial | el mismo **dashboard en vivo** (resumen, anomalías, calidad, tabla), compartido | **dashboard en vivo** (resumen, anomalías, calidad, tabla) |
 | Hosting | tu máquina | cualquier host Python gratis (ej. Render) |
+
+> El **dashboard de datos oficiales** es el mismo en las dos apps: vive en
+> `dashboard_views.py` (una sola fuente de verdad) y se activa en ambas cuando
+> hay Supabase configurado.
 
 ### Consenso colaborativo y dashboard de datos oficiales (opcional, Supabase)
 
@@ -96,7 +100,10 @@ proyecto de **Supabase** (gratis), se activan dos capacidades:
   (alertas de sobre, reconteo, tachaduras, exclusión) y `/tabla` (todas las
   mesas, filtrable y paginada). Las cifras se calculan en el servidor con vistas
   de Postgres y se leen desde el navegador con la **publishable key** (anónima,
-  solo lectura) — nunca la `service_role`.
+  solo lectura) — nunca la `service_role`. Estas cuatro vistas viven en
+  `dashboard_views.py` y aparecen **tanto en la app pública como en la estación
+  de revisión local** (sección «Análisis oficial» del menú lateral), idénticas
+  en ambas.
 
 Configúralo copiando `.env.example` a `.env` y poniendo tu `SUPABASE_URL` y la
 `SUPABASE_KEY` **publishable**. Si no hay `.env`, la app simplemente desactiva el
@@ -204,6 +211,10 @@ python review_server.py --dept 16     # sirve http://127.0.0.1:8765
   propuesta que tú confirmas).
 - **Veredicto**: marca cada mesa Verificada / Anomalía / Dudosa. Los veredictos se
   guardan en la tabla local `reviews`; nada sale de la máquina.
+- **Dashboard de datos oficiales**: si hay Supabase configurado, el menú lateral
+  muestra la sección «Análisis oficial» (Resumen, Anomalías, Calidad del proceso,
+  Todas las mesas) — las mismas cuatro vistas de la app pública, para priorizar
+  qué mesas revisar primero.
 
 ### Leer la letra manuscrita (visión local)
 
@@ -237,8 +248,9 @@ un veredicto.
 | `crop_totals.py` | Recorta la banda rotulada de blanco/nulos/no-marcados/total para la visión |
 | `candidates.py` | Lista maestra fija de candidatos + emparejamiento difuso de nombres |
 | `runner.py` | Corredor del pipeline en proceso usado por la estación de revisión |
-| `review_server.py` | App web local: navegador jerárquico + estación de revisión |
+| `review_server.py` | App web local: navegador jerárquico + estación de revisión + dashboard de datos oficiales |
 | `public_server.py` | App web pública: navegador + entrada manual + consenso (Supabase) + dashboard de datos oficiales |
+| `dashboard_views.py` | Las cuatro vistas del dashboard (resumen, anomalías, calidad, tabla), compartidas por ambas apps |
 | `build_public_index.py` | Construye `data/public_index.csv.gz` para la app web pública |
 | `parse_official.py` | Convierte el análisis PRE/ESC de terceros en `data/official/official_by_mesa.csv.gz` |
 | `load_official.py` | Carga (bulk) `official_data` en Supabase con la `service_role` key (solo local) |
