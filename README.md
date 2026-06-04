@@ -2,6 +2,12 @@
 
 **🇪🇸 Español** · [🇬🇧 English](README.en.md)
 
+### 🟢 App en vivo: **https://colombia-veeduria-e14-2026.onrender.com**
+
+> Ábrela en el navegador, sin instalar nada. Cualquiera puede revisar las actas,
+> escribir los números que ve y sumar su reporte al consenso ciudadano.
+
+[![App en vivo](https://img.shields.io/badge/App%20en%20vivo-Abrir-10b981?logo=render&logoColor=white)](https://colombia-veeduria-e14-2026.onrender.com)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![País](https://img.shields.io/badge/Colombia-E14%202026-yellow?labelColor=blue)
@@ -110,6 +116,10 @@ Configúralo copiando `.env.example` a `.env` y poniendo tu `SUPABASE_URL` y la
 consenso y el dashboard y sigue funcionando en modo local.
 
 ### Correr la app web pública
+
+> **Ya está desplegada y abierta al público:**
+> **https://colombia-veeduria-e14-2026.onrender.com** — no necesitas correrla tú
+> para usarla. Estos pasos son solo si quieres levantar tu propia instancia.
 
 Cero instalación para los visitantes. Lee un índice pequeño y versionado
 (`data/public_index.csv.gz`), trae cada PDF oficial por proxy bajo demanda, y
