@@ -26,14 +26,34 @@ navegador, ve a [Estación de revisión](#estación-de-revisión-con-persona-en-
 
 ## Capturas
 
-Navega como en el sitio oficial — Departamento → Municipio → Zona → Puesto →
-mesas — con el avance por nivel (`X/Y verificadas`) y etiquetas de estado:
+**Dashboard de análisis oficial** — cruza el preconteo (PRE) con el escrutinio
+oficial (ESC) de las actas ya publicadas y resalta lo que merece revisión. Las
+métricas y el gráfico se calculan en vivo sobre las mesas cargadas:
+
+![Resumen del análisis](docs/dashboard-resumen.png)
+
+**Lista de anomalías** — mesas donde el escrutinio difiere del preconteo,
+graduadas por gravedad y filtrables. Una diferencia es una señal para mirar el
+acta, no una acusación:
+
+![Lista de anomalías](docs/dashboard-anomalias.png)
+
+**Calidad del proceso** y **tabla filtrable de todas las mesas** completan el
+tablero (alertas de sobre/reconteo/tachaduras y exploración paginada):
+
+![Calidad del proceso](docs/dashboard-calidad.png)
+![Todas las mesas](docs/dashboard-tabla.png)
+
+**Navegador jerárquico** — recorre como en el sitio oficial: Departamento →
+Municipio → Zona → Puesto → mesas, con el avance por nivel (`X/Y verificadas`)
+y etiquetas de estado:
 
 ![Navegador jerárquico](docs/browse.png)
 
-Abre una mesa para verificarla: el PDF a la izquierda, los números (leídos
-automáticamente por el modelo de visión local, que tú confirmas) a la derecha,
-incluyendo un recorte ampliado de la banda de blanco/nulos/no-marcados/total:
+**Estación de revisión** — abre una mesa para verificarla: el PDF a la
+izquierda, los números (leídos automáticamente por el modelo de visión local,
+que tú confirmas) a la derecha, incluyendo un recorte ampliado de la banda de
+blanco/nulos/no-marcados/total:
 
 ![Estación de revisión](docs/station.png)
 
@@ -52,9 +72,35 @@ fuente de verdad, los PDF viven en `data/forms`, y los reportes se escriben en
 | Para | un auditor con un PC capaz | cualquiera, sin instalar |
 | Visión | Ollama local lee los números solo | ninguna — la persona escribe lo que ve |
 | Instalar | Python + Tesseract + Poppler + Ollama | nada (el visitante solo abre una URL) |
-| Almacenamiento | SQLite + PDF descargados en disco | nada en el servidor; los veredictos viven en el navegador del visitante |
+| Almacenamiento | SQLite + PDF descargados en disco | veredictos en el navegador del visitante; reportes y consenso en Supabase (opcional) |
 | PDF | descargados y cacheados | traídos por proxy bajo demanda desde la Registraduría |
+| Colaboración | un solo auditor | **consenso entre varias personas** (una mesa se confirma cuando ≥3 coinciden) |
+| Análisis oficial | reporte HTML local | **dashboard en vivo** (resumen, anomalías, calidad, tabla) |
 | Hosting | tu máquina | cualquier host Python gratis (ej. Render) |
+
+### Consenso colaborativo y dashboard de datos oficiales (opcional, Supabase)
+
+La app pública funciona sola sin configurar nada: cualquiera abre una mesa,
+escribe los números y la app cuadra la suma localmente. Si además configuras un
+proyecto de **Supabase** (gratis), se activan dos capacidades:
+
+- **Consenso entre personas.** Quien quiera sumar su lectura entra con su correo
+  (enlace mágico, sin contraseña) y envía su reporte. Una mesa queda
+  **confirmada por consenso** cuando **≥3 personas coinciden** de forma
+  independiente. Nadie puede borrar reportes ajenos; el navegador solo lee el
+  consenso público y escribe el reporte propio (RLS de Supabase lo restringe).
+- **Dashboard de datos oficiales.** A partir de un análisis ciudadano del cruce
+  PRE/ESC (cargado en la tabla `official_data`), cuatro vistas de solo lectura
+  resumen el panorama: `/resumen` (métricas + gráfico por circunscripción),
+  `/anomalias` (discrepancias reales graduadas por gravedad), `/calidad`
+  (alertas de sobre, reconteo, tachaduras, exclusión) y `/tabla` (todas las
+  mesas, filtrable y paginada). Las cifras se calculan en el servidor con vistas
+  de Postgres y se leen desde el navegador con la **publishable key** (anónima,
+  solo lectura) — nunca la `service_role`.
+
+Configúralo copiando `.env.example` a `.env` y poniendo tu `SUPABASE_URL` y la
+`SUPABASE_KEY` **publishable**. Si no hay `.env`, la app simplemente desactiva el
+consenso y el dashboard y sigue funcionando en modo local.
 
 ### Correr la app web pública
 
@@ -69,9 +115,14 @@ python public_server.py          # sirve http://localhost:8080
 ```
 
 **Desplegar gratis en Render:** sube este repo, crea un servicio tipo *Blueprint*
-en render.com — lee el archivo `render.yaml`. Sin GPU, sin base de datos, sin
-llaves de API. En el plan gratis la app "duerme" tras inactividad (la primera
-visita tarda ~30 s en despertar).
+en render.com — lee el archivo `render.yaml`. Sin GPU. El blueprint **no** corre
+`pip install` (la app pública es stdlib pura), así que arranca limpio. Si quieres
+consenso y dashboard, Render te pedirá `SUPABASE_URL` y `SUPABASE_KEY`
+(publishable) al desplegar — no quedan en el repo. Después, en Supabase
+→ *Authentication → URL Configuration*, añade tu URL de Render a *Site URL* y
+*Redirect URLs* para que el enlace mágico funcione en producción. En el plan
+gratis la app "duerme" tras inactividad (la primera visita tarda ~30 s en
+despertar).
 
 ## Estructura del sitio fuente (confirmada empíricamente)
 
@@ -187,8 +238,10 @@ un veredicto.
 | `candidates.py` | Lista maestra fija de candidatos + emparejamiento difuso de nombres |
 | `runner.py` | Corredor del pipeline en proceso usado por la estación de revisión |
 | `review_server.py` | App web local: navegador jerárquico + estación de revisión |
-| `public_server.py` | App web pública: navegador + estación de entrada manual (sin visión) |
+| `public_server.py` | App web pública: navegador + entrada manual + consenso (Supabase) + dashboard de datos oficiales |
 | `build_public_index.py` | Construye `data/public_index.csv.gz` para la app web pública |
+| `parse_official.py` | Convierte el análisis PRE/ESC de terceros en `data/official/official_by_mesa.csv.gz` |
+| `load_official.py` | Carga (bulk) `official_data` en Supabase con la `service_role` key (solo local) |
 | `consolidate.py` | Agrega los resultados confirmados de las mesas revisadas |
 
 ## Principios de diseño
