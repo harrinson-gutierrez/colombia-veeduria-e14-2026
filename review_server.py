@@ -781,6 +781,104 @@ def station_page(conn, dept, code):
     return station_shell(body, dept, code, str(total_dl), str(reviewed), prefilled)
 
 
+def _consensus_block(code: str) -> str:
+    """Login (magic link) + submit report + show consensus, via Supabase in the
+    browser. Returns a comment when Supabase is not configured (local-only)."""
+    if not (config.SUPABASE_URL and config.SUPABASE_KEY):
+        return ("<!-- consensus disabled: set SUPABASE_URL and SUPABASE_KEY to "
+                "enable login and cross-confirmation -->")
+    url = json.dumps(config.SUPABASE_URL)
+    key = json.dumps(config.SUPABASE_KEY)
+    code_js = json.dumps(code or "")
+    return f"""
+<div id="consensus" style="position:fixed;left:0;right:0;bottom:0;background:#0d1117;
+  color:#c9d1d9;padding:.5rem 1rem;font:13px system-ui,sans-serif;display:flex;
+  gap:1rem;align-items:center;z-index:60;border-top:1px solid #30363d">
+  <span id="cAuth"></span>
+  <span id="cStatus" style="margin-left:auto"></span>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB = window.supabase.createClient({url}, {key});
+const MESA = {code_js};
+const authEl = document.getElementById('cAuth');
+const statusEl = document.getElementById('cStatus');
+
+// Build the auth bar with safe DOM nodes (no innerHTML with dynamic data).
+function el(tag, props, ...kids) {{
+  const n = document.createElement(tag);
+  Object.assign(n, props || {{}});
+  for (const k of kids) n.append(k);
+  return n;
+}}
+
+async function refreshAuth() {{
+  authEl.textContent = '';
+  const {{ data }} = await SB.auth.getUser();
+  if (data && data.user) {{
+    const out = el('a', {{href:'#', textContent:'salir', style:'color:#79c0ff'}});
+    out.onclick = async (e)=>{{ e.preventDefault(); await SB.auth.signOut(); refreshAuth(); }};
+    authEl.append('✓ ', el('b', {{textContent: data.user.email}}), ' · ', out);
+  }} else {{
+    const input = el('input', {{type:'email', placeholder:'tu@correo.com',
+      style:'padding:.25rem;border-radius:4px;border:1px solid #30363d;background:#161b22;color:#c9d1d9'}});
+    const btn = el('button', {{textContent:'Enviar enlace',
+      style:'padding:.3rem .6rem;border:0;border-radius:4px;background:#238636;color:#fff;cursor:pointer'}});
+    btn.onclick = async ()=>{{
+      const email = input.value.trim(); if (!email) return;
+      const {{ error }} = await SB.auth.signInWithOtp({{ email, options:{{ emailRedirectTo: location.href }} }});
+      authEl.textContent = error ? ('Error: '+error.message)
+        : '📧 Revisa tu correo y abre el enlace para entrar.';
+    }};
+    authEl.append('Para enviar tu reporte, entra con tu correo: ', input, ' ', btn);
+  }}
+}}
+
+async function showConsensus() {{
+  if (!MESA) return;
+  const {{ data }} = await SB.from('consensus').select('*').eq('mesa_code', MESA);
+  if (data && data.length) {{
+    const c = data[0];
+    const label = {{confirmed:'✅ CONFIRMADA', disputed:'⚠️ EN DISPUTA', pending:'⏳ pendiente'}}[c.status] || c.status;
+    statusEl.textContent = label + ' · ' + c.n_reports + ' reporte(s)';
+  }} else {{
+    statusEl.textContent = 'Aún sin reportes de otras personas';
+  }}
+}}
+
+function collectNumbers() {{
+  const out = {{candidates:{{}}}};
+  document.querySelectorAll('.numin').forEach(i=>{{
+    const f = i.dataset.field; const v = i.value===''?null:parseInt(i.value,10);
+    if (v===null) return;
+    if (f && f.startsWith('candidate_')) out.candidates['c'+f.split('_')[1]] = v;
+    else if (f==='blank') out.blank=v;
+    else if (f==='null') out.null_votes=v;
+    else if (f==='unmarked') out.unmarked=v;
+    else if (f==='total') out.total=v;
+  }});
+  return out;
+}}
+
+async function submitReport(verdict) {{
+  const {{ data }} = await SB.auth.getUser();
+  if (!data || !data.user || !MESA) return;
+  const nums = collectNumbers();
+  const row = {{ mesa_code: MESA, user_id: data.user.id, verdict,
+    candidates: nums.candidates, blank: nums.blank, null_votes: nums.null_votes,
+    unmarked: nums.unmarked, total: nums.total }};
+  const {{ error }} = await SB.from('reports').upsert(row, {{ onConflict: 'mesa_code,user_id' }});
+  statusEl.textContent = error ? ('No se pudo enviar: '+error.message) : 'Tu reporte fue enviado';
+  if (!error) showConsensus();
+}}
+document.querySelectorAll('.verdicts button[name="verdict"]').forEach(b=>{{
+  b.addEventListener('click', ()=>submitReport(b.value));
+}});
+
+refreshAuth(); showConsensus();
+</script>"""
+
+
 def station_shell(body, dept, code, total_dl, reviewed, prefilled=False):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1126,6 +1224,7 @@ if(autoRevBox){{
 
 loadDepts(); setInterval(poll,2000); setInterval(pollEvents,1000); poll(); pollEvents(); prefill();
 </script>
+{_consensus_block(code)}
 </body></html>"""
 
 

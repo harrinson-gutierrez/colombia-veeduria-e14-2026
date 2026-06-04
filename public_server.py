@@ -89,6 +89,111 @@ def _tables(sel: dict) -> list[dict]:
     return out
 
 
+def mesa_code(dept, mun, zone, station, table) -> str:
+    """Canonical table id shared with Supabase (reports + official_data).
+    The table number is stripped of leading zeros so it matches the parsed
+    official sheet ('003' -> '3'). MUST stay identical on both sides."""
+    t = str(int(table)) if str(table).isdigit() else str(table)
+    return "-".join([dept, mun, zone, station, t])
+
+
+# ---- consensus (Supabase magic-link login + cross-confirmation) -----------
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or None
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or None
+
+
+def _consensus_block(code: str) -> str:
+    """Login + submit report + show consensus via Supabase, in the browser.
+    Returns a comment when Supabase is not configured (local-only mode)."""
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        return "<!-- consensus disabled: set SUPABASE_URL and SUPABASE_KEY -->"
+    import json as _json
+    url, key, mesa = _json.dumps(SUPABASE_URL), _json.dumps(SUPABASE_KEY), _json.dumps(code or "")
+    return f"""
+<div id="consensus" style="position:fixed;left:0;right:0;bottom:0;background:#0d1117;
+  color:#c9d1d9;padding:.5rem 1rem;font:13px system-ui,sans-serif;display:flex;
+  gap:1rem;align-items:center;z-index:60;border-top:1px solid #30363d">
+  <span id="cAuth"></span><span id="cStatus" style="margin-left:auto"></span>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB = window.supabase.createClient({url}, {key});
+const MESA = {mesa};
+const authEl = document.getElementById('cAuth');
+const statusEl = document.getElementById('cStatus');
+function el(t,p,...k){{const n=document.createElement(t);Object.assign(n,p||{{}});for(const c of k)n.append(c);return n;}}
+async function refreshAuth(){{
+  authEl.textContent='';
+  const {{data}} = await SB.auth.getUser();
+  if (data&&data.user){{
+    const out=el('a',{{href:'#',textContent:'salir',style:'color:#79c0ff'}});
+    out.onclick=async e=>{{e.preventDefault();await SB.auth.signOut();refreshAuth();}};
+    authEl.append('✓ ',el('b',{{textContent:data.user.email}}),' · ',out);
+  }} else {{
+    const inp=el('input',{{type:'email',placeholder:'tu@correo.com',style:'padding:.25rem;border-radius:4px;border:1px solid #30363d;background:#161b22;color:#c9d1d9'}});
+    const btn=el('button',{{textContent:'Enviar enlace',style:'padding:.3rem .6rem;border:0;border-radius:4px;background:#238636;color:#fff;cursor:pointer'}});
+    btn.onclick=async ()=>{{const email=inp.value.trim();if(!email)return;
+      const {{error}}=await SB.auth.signInWithOtp({{email,options:{{emailRedirectTo:location.href}}}});
+      authEl.textContent=error?('Error: '+error.message):'📧 Revisa tu correo y abre el enlace para entrar.';}};
+    authEl.append('Para sumar tu reporte al consenso, entra con tu correo: ',inp,' ',btn);
+  }}
+}}
+async function showConsensus(){{
+  if(!MESA)return;
+  const {{data}}=await SB.from('consensus').select('*').eq('mesa_code',MESA);
+  if(data&&data.length){{const c=data[0];
+    const lbl={{confirmed:'✅ CONFIRMADA',disputed:'⚠️ EN DISPUTA',pending:'⏳ pendiente'}}[c.status]||c.status;
+    statusEl.textContent=lbl+' · '+c.n_reports+' reporte(s)';
+  }} else statusEl.textContent='Aún sin reportes de otras personas';
+}}
+window.__submitReport = async function(verdict){{
+  const {{data}}=await SB.auth.getUser();
+  if(!data||!data.user||!MESA)return;
+  const c={{}}; let blank=null,nullv=null,unmarked=null,total=null;
+  document.querySelectorAll('.numin').forEach(i=>{{
+    const f=i.dataset.f, v=i.value===''?null:parseInt(i.value,10); if(v===null)return;
+    if(f&&f[0]==='c'&&f.length<=3) c[f]=v;
+    else if(f==='blank')blank=v; else if(f==='null')nullv=v;
+    else if(f==='unmarked')unmarked=v; else if(f==='total')total=v;
+  }});
+  const row={{mesa_code:MESA,user_id:data.user.id,verdict,candidates:c,blank,null_votes:nullv,unmarked,total}};
+  const {{error}}=await SB.from('reports').upsert(row,{{onConflict:'mesa_code,user_id'}});
+  statusEl.textContent=error?('No se pudo enviar: '+error.message):'Tu reporte fue enviado al consenso';
+  if(!error)showConsensus();
+}};
+
+// Third-party official analysis (PRE vs ESC + integrity flags) for this table.
+async function showOfficial(){{
+  if(!MESA)return;
+  const {{data}}=await SB.from('official_data').select('*').eq('mesa_code',MESA);
+  if(!data||!data.length)return;
+  const o=data[0];
+  const box=el('div',{{style:'position:fixed;right:1rem;bottom:3rem;max-width:320px;'+
+    'background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:.6rem .8rem;'+
+    'font:12px system-ui,sans-serif;color:#7c2d12;z-index:61;box-shadow:0 4px 16px rgba(0,0,0,.15)'}});
+  const diff=(o.dif_neta==null)?null:o.dif_neta;
+  box.append(el('div',{{style:'font-weight:700;margin-bottom:.3rem'}},'Análisis externo (a verificar)'));
+  box.append(el('div',{{}},'Preconteo (PRE): '+(o.votos_pre==null?'—':o.votos_pre)));
+  box.append(el('div',{{}},'Escrutinio (ESC): '+(o.votos_esc==null?'—':o.votos_esc)));
+  if(diff!=null&&diff!==0)
+    box.append(el('div',{{style:'font-weight:700;color:#b91c1c;margin-top:.2rem'}},
+      '⚠ Diferencia PRE/ESC: '+diff));
+  const flags=[];
+  if(o.estado_sobre&&o.estado_sobre.toUpperCase()!=='BUENO') flags.push('sobre: '+o.estado_sobre);
+  if(o.recontada_jurados&&o.recontada_jurados.toUpperCase()==='SI') flags.push('recontada por jurados');
+  if(o.tachaduras&&o.tachaduras.toUpperCase()==='SI') flags.push('tachaduras/enmendaduras');
+  if(o.excluida&&o.excluida.toUpperCase()==='SI') flags.push('EXCLUIDA');
+  if(flags.length)
+    box.append(el('div',{{style:'margin-top:.3rem;color:#9a3412'}},'Alertas: '+flags.join(' · ')));
+  box.append(el('div',{{style:'margin-top:.35rem;font-size:10px;opacity:.7'}},
+    'Fuente: análisis ciudadano de terceros. Compáralo con el acta y confirma.'));
+  document.body.append(box);
+}}
+
+refreshAuth(); showConsensus(); showOfficial();
+</script>"""
+
+
 # ---- HTML pages -----------------------------------------------------------
 def _shell(title: str, body: str) -> str:
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
@@ -108,6 +213,8 @@ def _shell(title: str, body: str) -> str:
  .card .lbl{{font-weight:600}} .card .st{{font-size:.78rem;color:#5b6472;margin-top:.3rem}}
  .card.done{{border-left:5px solid #2e7d32}} .card.anom{{border-left:5px solid #c62828}}
  .card.todo{{border-left:5px solid #cbd2da}}
+ .card.priority{{box-shadow:0 0 0 2px #fb923c inset;background:#fff7ed}}
+ .card.priority .state{{color:#b45309;font-weight:600}}
  .station{{display:flex;gap:1rem;padding:1rem 1.1rem;flex-wrap:wrap}}
  .pdfpane{{flex:1 1 540px;min-height:70vh;background:#fff;border:1px solid #e2e5ea;border-radius:10px;overflow:hidden}}
  .pdfpane embed{{width:100%;height:78vh;border:0}}
@@ -174,15 +281,15 @@ def browse_page(sel: dict) -> str:
 def _tables_page(sel: dict, crumb_html: str) -> str:
     cards = []
     for r in _tables(sel):
-        code = "-".join([r["department_code"], r["municipality_code"],
-                         r["zone_code"], r["station_code"], r["table_number"]])
+        code = mesa_code(r["department_code"], r["municipality_code"],
+                         r["zone_code"], r["station_code"], r["table_number"])
         cards.append(
             f'<a class="card todo" data-code="{esc(code)}" '
             f'href="/mesa?{urllib.parse.urlencode(dict(sel, table=r["table_number"]))}">'
             f'<div class="lbl">Mesa {esc(r["table_number"])}</div>'
             f'<div class="st state">Pendiente</div></a>')
     body = (f'<div class="crumbs">{crumb_html}</div><h2>Mesas</h2>'
-            f'<div class="grid">' + "".join(cards) + "</div>" + _TABLES_JS)
+            f'<div class="grid">' + "".join(cards) + "</div>" + _tables_js())
     return _shell("Mesas", body)
 
 
@@ -191,7 +298,7 @@ def mesa_page(sel: dict) -> str:
     row = next((r for r in rows if r["table_number"] == sel.get("table")), None)
     if not row:
         return _shell("Mesa", '<p style="padding:1.1rem">Mesa no encontrada.</p>')
-    code = "-".join([sel["dept"], sel["mun"], sel["zone"], sel["station"], sel["table"]])
+    code = mesa_code(sel["dept"], sel["mun"], sel["zone"], sel["station"], sel["table"])
     pdf_proxy = "/pdf?u=" + urllib.parse.quote(row["pdf_url"], safe="")
 
     num_rows = []
@@ -257,9 +364,11 @@ function save(verdict){{
 document.querySelectorAll('.verdicts button').forEach(b=>b.onclick=()=>{{
   save(b.dataset.v);
   document.getElementById('saved').textContent='Guardado: '+b.dataset.v+'. Puedes volver a las mesas.';
+  if (window.__submitReport) window.__submitReport(b.dataset.v);  // also send to consensus
 }});
 recompute();
-</script>"""
+</script>
+{_consensus_block(code)}"""
     return _shell("Mesa " + sel["table"], body)
 
 
@@ -268,18 +377,44 @@ _PROG_JS = """<script>
 document.querySelectorAll('.card .prog').forEach(()=>{});
 </script>"""
 
-_TABLES_JS = """<script>
-for(const c of document.querySelectorAll('.card[data-code]')){
-  try{const s=JSON.parse(localStorage.getItem('e14_'+c.dataset.code)||'null');
-    if(s&&s.verdict){
-      const st=c.querySelector('.state');
-      const map={valid:['done','Verificada'],anomaly:['anom','Anomalía'],unclear:['todo','Dudosa']};
-      const m=map[s.verdict]||['todo','Pendiente'];
-      c.classList.remove('todo');c.classList.add(m[0]);
-      if(st) st.textContent=m[1];
-    }
-  }catch(e){}
-}
+def _tables_js() -> str:
+    # Optional Supabase read to flag tables with a PRE/ESC discrepancy (priority).
+    sb = ""
+    if SUPABASE_URL and SUPABASE_KEY:
+        import json as _json
+        sb = f"""
+  // Flag tables that the external analysis marks as priority (PRE/ESC mismatch).
+  try{{
+    const codes=[...document.querySelectorAll('.card[data-code]')].map(c=>c.dataset.code);
+    if(codes.length){{
+      const inList=encodeURIComponent('("'+codes.join('","')+'")');
+      const r=await fetch({_json.dumps(SUPABASE_URL)}+'/rest/v1/official_data?select=mesa_code,dif_neta'+
+        '&priority=eq.true&mesa_code=in.'+inList,
+        {{headers:{{apikey:{_json.dumps(SUPABASE_KEY)}}}}});
+      const prio=await r.json();
+      for(const p of (prio||[])){{
+        const c=document.querySelector('.card[data-code="'+p.mesa_code+'"]');
+        if(c){{ c.classList.add('priority');
+          const st=c.querySelector('.state');
+          if(st) st.textContent='⚠ revisar (dif. PRE/ESC '+p.dif_neta+')'; }}
+      }}
+    }}
+  }}catch(e){{}}
+"""
+    return f"""<script>
+(async function(){{
+  for(const c of document.querySelectorAll('.card[data-code]')){{
+    try{{const s=JSON.parse(localStorage.getItem('e14_'+c.dataset.code)||'null');
+      if(s&&s.verdict){{
+        const st=c.querySelector('.state');
+        const map={{valid:['done','Verificada'],anomaly:['anom','Anomalía'],unclear:['todo','Dudosa']}};
+        const m=map[s.verdict]||['todo','Pendiente'];
+        c.classList.remove('todo');c.classList.add(m[0]);
+        if(st) st.textContent=m[1];
+      }}
+    }}catch(e){{}}
+  }}{sb}
+}})();
 </script>"""
 
 HOME = """<div class="grid" style="grid-template-columns:1fr;max-width:680px">

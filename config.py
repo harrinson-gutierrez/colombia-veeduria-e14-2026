@@ -80,3 +80,13 @@ OCR_DPI = 300
 # Directory holding <lang>.traineddata. Bundled in the project so no system-wide
 # language install is needed. Leave None to use Tesseract's default tessdata.
 TESSDATA_DIR = f"{DATA_DIR}/tessdata"
+
+# Supabase (shared consensus backend: magic-link auth + cross-confirmation).
+# Set these as environment variables; never hardcode them in a public repo.
+# The publishable key is safe to expose in the browser (Row Level Security
+# limits it to inserting your own reports and reading the public consensus).
+#   SUPABASE_URL=https://<project>.supabase.co
+#   SUPABASE_KEY=sb_publishable_...
+# When unset, the review station runs in local-only mode (no login / consensus).
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or None
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or None
