@@ -12,6 +12,8 @@ data/*
 !data/official/official_by_mesa.csv.gz
 
 # Secrets / session
+.env
+.env.local
 cookies.txt
 *.cookies
 

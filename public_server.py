@@ -21,6 +21,22 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+
+def _load_dotenv(path: str = ".env") -> None:
+    """Load KEY=VALUE from a local .env into os.environ without overriding what
+    is already set. Keeps Supabase keys out of the global shell and out of git."""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
+
 PORT = int(os.environ.get("PORT", "8080"))
 INDEX_GZ = os.path.join("data", "public_index.csv.gz")
 SOURCE_HOST = "https://divulgacione14presidente.registraduria.gov.co"

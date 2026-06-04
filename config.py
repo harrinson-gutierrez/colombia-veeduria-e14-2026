@@ -2,6 +2,25 @@
 
 import os
 
+
+def _load_dotenv(path: str = ".env") -> None:
+    """Load KEY=VALUE lines from a local .env into os.environ (without
+    overriding values already set). No external dependency; keeps secrets out of
+    the global shell environment and out of git (.env is gitignored)."""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            os.environ.setdefault(key, val)
+
+
+_load_dotenv()
+
 BASE = "https://divulgacione14presidente.registraduria.gov.co"
 META_BASE = f"{BASE}/assets/temis/divipol_json"
 PDF_BASE = f"{BASE}/assets/temis/pdf"
