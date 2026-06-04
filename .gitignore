@@ -5,10 +5,17 @@ data/*
 *.db
 *.csv
 
-# ...EXCEPT the minimal compressed index the public web app ships with.
+# ...EXCEPT the minimal compressed index the public web app ships with,
+# and the parsed third-party PRE/ESC analysis used for prioritisation.
 !data/public_index.csv.gz
+!data/official/
+!data/official/official_by_mesa.csv.gz
+# but NOT the throwaway SQL batches used to bulk-load official_data once.
+data/official/batches/
 
 # Secrets / session
+.env
+.env.local
 cookies.txt
 *.cookies
 

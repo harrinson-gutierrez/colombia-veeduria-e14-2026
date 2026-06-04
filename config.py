@@ -2,6 +2,25 @@
 
 import os
 
+
+def _load_dotenv(path: str = ".env") -> None:
+    """Load KEY=VALUE lines from a local .env into os.environ (without
+    overriding values already set). No external dependency; keeps secrets out of
+    the global shell environment and out of git (.env is gitignored)."""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            os.environ.setdefault(key, val)
+
+
+_load_dotenv()
+
 BASE = "https://divulgacione14presidente.registraduria.gov.co"
 META_BASE = f"{BASE}/assets/temis/divipol_json"
 PDF_BASE = f"{BASE}/assets/temis/pdf"
@@ -80,3 +99,13 @@ OCR_DPI = 300
 # Directory holding <lang>.traineddata. Bundled in the project so no system-wide
 # language install is needed. Leave None to use Tesseract's default tessdata.
 TESSDATA_DIR = f"{DATA_DIR}/tessdata"
+
+# Supabase (shared consensus backend: magic-link auth + cross-confirmation).
+# Set these as environment variables; never hardcode them in a public repo.
+# The publishable key is safe to expose in the browser (Row Level Security
+# limits it to inserting your own reports and reading the public consensus).
+#   SUPABASE_URL=https://<project>.supabase.co
+#   SUPABASE_KEY=sb_publishable_...
+# When unset, the review station runs in local-only mode (no login / consensus).
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or None
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or None

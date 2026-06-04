@@ -26,14 +26,33 @@ follow [Pipeline flow](#pipeline-flow). To review forms in a browser, jump to
 
 ## Screenshots
 
-Browse like the official site — Department → Municipality → Zone → Station →
-tables — with per-level progress (`X/Y verified`) and verdict chips:
+**Official-data dashboard** — cross-checks the pre-count (PRE) against the
+official scrutiny (ESC) of already-published tally sheets and surfaces what
+deserves review. Metrics and chart are computed live over the loaded tables:
+
+![Analysis summary](docs/dashboard-resumen.png)
+
+**Anomalies list** — tables where the scrutiny differs from the pre-count,
+severity-graded and filterable. A difference is a signal to look at the sheet,
+not an accusation:
+
+![Anomalies list](docs/dashboard-anomalias.png)
+
+**Process quality** and a **filterable table of every polling table** complete
+the dashboard (envelope/recount/erasure/exclusion flags and paginated browsing):
+
+![Process quality](docs/dashboard-calidad.png)
+![All tables](docs/dashboard-tabla.png)
+
+**Hierarchical browser** — browse like the official site: Department →
+Municipality → Zone → Station → tables, with per-level progress (`X/Y verified`)
+and verdict chips:
 
 ![Hierarchical browser](docs/browse.png)
 
-Open a table to verify it: the PDF on the left, the numbers (auto-read by the
-local vision model, confirmed by you) on the right, including a zoomed crop of
-the blank/null/unmarked/total band:
+**Review station** — open a table to verify it: the PDF on the left, the numbers
+(auto-read by the local vision model, confirmed by you) on the right, including a
+zoomed crop of the blank/null/unmarked/total band:
 
 ![Review station](docs/station.png)
 
