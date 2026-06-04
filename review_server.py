@@ -267,39 +267,74 @@ def _level_label(level, gid, r):
 def _browse_shell(heading, crumb_html, body):
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>E14 - Navegar / Browse</title><style>
- *{{box-sizing:border-box}} body{{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#f4f6f9;color:#1c2230}}
- header{{background:#0d47a1;color:#fff;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem}}
- header b{{font-size:1.05rem}} header a{{color:#cfe0ff;text-decoration:none}}
- .crumbs{{padding:.7rem 1.2rem;font-size:.9rem;background:#fff;border-bottom:1px solid #e2e5ea}}
- .crumbs a{{color:#0d47a1;text-decoration:none}} .crumbs a:hover{{text-decoration:underline}}
- .csep{{color:#aaa;margin:0 .1rem}}
- h2{{margin:1rem 1.2rem .3rem;font-size:1.1rem}}
- .bgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.8rem;padding:1rem 1.2rem}}
- .bcard{{display:block;background:#fff;border:1px solid #e2e5ea;border-radius:10px;padding:.8rem .9rem;
-   text-decoration:none;color:#1c2230;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:.15s}}
- .bcard:hover{{border-color:#0d47a1;box-shadow:0 3px 10px rgba(13,71,161,.12);transform:translateY(-1px)}}
- .blabel{{font-weight:600;margin-bottom:.5rem}}
- .bbar{{height:7px;background:#eef0f3;border-radius:99px;overflow:hidden;margin:.3rem 0}}
- .bfill{{height:100%;background:#2e7d32;border-radius:99px}}
- .bcount{{font-size:.82rem;color:#5b6472}} .bcount .es{{color:#9aa1ab;font-size:.74rem}}
- .bchips{{margin-top:.45rem;display:flex;flex-wrap:wrap;gap:.3rem}}
- .chip{{font-size:.68rem;padding:.08rem .4rem;border-radius:99px;color:#fff;font-weight:600}}
- .chip.v-valid{{background:#2e7d32}} .chip.v-anomaly{{background:#c62828}}
- .chip.v-unclear{{background:#ef6c00}} .chip.flag{{background:#6a1b9a}}
- .bcard.table{{border-left:5px solid #ccc}}
- .bcard.table.v-valid{{border-left-color:#2e7d32}} .bcard.table.v-anomaly{{border-left-color:#c62828}}
- .bcard.table.v-unclear{{border-left-color:#ef6c00}} .bcard.table.v-todo{{border-left-color:#cbd2da}}
- .bcard.table.flagged{{box-shadow:0 0 0 2px #6a1b9a inset}}
- .bnum{{font-weight:700;font-size:1rem}} .bstate{{font-size:.78rem;color:#5b6472;margin-top:.2rem}}
- .bwarn{{font-size:.7rem;color:#c62828;margin-top:.2rem}}
- .bempty{{padding:1.2rem;color:#9aa1ab}}
+<title>E14 - Navegar / Browse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+ :root{{
+   --bg:#0c1116; --panel:#11181f; --rail:#0a0f14;
+   --card:#ffffff; --ink:#0e1419; --soft:#5d6b78; --line:#eceff2;
+   --brand:#10b981; --brand-d:#059669; --brand-soft:#e7f7f1;
+   --flag:#d97706; --flag-soft:#fff7ed; --bad:#dc2626; --good:#10b981;
+   --shadow:0 1px 2px rgba(13,20,25,.04), 0 12px 28px -16px rgba(13,20,25,.25);
+ }}
+ *{{box-sizing:border-box}}
+ body{{margin:0;font-family:'Inter Tight',system-ui,sans-serif;background:#f6f8f9;color:var(--ink);
+   -webkit-font-smoothing:antialiased;line-height:1.5}}
+ a{{color:var(--brand-d)}}
+ header{{background:#fff;border-bottom:1px solid var(--line);padding:1rem 1.6rem;
+   display:flex;align-items:center;gap:1.1rem}}
+ header b{{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem;letter-spacing:-.01em;color:var(--ink)}}
+ header a{{color:var(--brand-d);text-decoration:none;font-size:.85rem;font-weight:500;margin-left:auto}}
+ header a:hover{{text-decoration:underline}}
+ .crumbs{{padding:.85rem 1.6rem;font-size:.85rem;background:#fff;border-bottom:1px solid var(--line);color:var(--soft)}}
+ .crumbs a{{color:var(--brand-d);text-decoration:none}} .crumbs a:hover{{text-decoration:underline}}
+ .csep{{color:#c4ccd4;margin:0 .25rem}}
+ h2{{font-family:'Fraunces',serif;font-weight:600;margin:1.5rem 1.6rem .3rem;font-size:1.45rem;letter-spacing:-.01em}}
+ .bgrid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;padding:1.2rem 1.6rem}}
+ .bcard{{display:block;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.1rem 1.2rem;
+   text-decoration:none;color:var(--ink);box-shadow:var(--shadow);
+   transition:transform .15s ease, box-shadow .15s ease;animation:rise .4s ease both}}
+ .bcard:hover{{transform:translateY(-3px);box-shadow:0 6px 12px rgba(13,20,25,.06),0 22px 40px -18px rgba(13,20,25,.35)}}
+ @keyframes rise{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}
+ .blabel{{font-weight:600;font-size:1.05rem;margin-bottom:.5rem}}
+ .bbar{{height:6px;background:#eef1f3;border-radius:99px;overflow:hidden;margin:.55rem 0 .1rem}}
+ .bfill{{height:100%;background:var(--brand);border-radius:99px}}
+ .bcount{{font-size:.82rem;color:var(--soft);font-variant-numeric:tabular-nums}} .bcount .es{{color:#9aa6b0;font-size:.74rem}}
+ .bchips{{margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.3rem}}
+ .chip{{font-size:.68rem;padding:.12rem .45rem;border-radius:99px;color:#fff;font-weight:600;font-variant-numeric:tabular-nums}}
+ .chip.v-valid{{background:var(--good)}} .chip.v-anomaly{{background:var(--bad)}}
+ .chip.v-unclear{{background:var(--flag)}} .chip.flag{{background:#7c3aed}}
+ .bcard.table{{border-left:4px solid #e1e6ea}}
+ .bcard.table.v-valid{{border-left-color:var(--good)}} .bcard.table.v-anomaly{{border-left-color:var(--bad)}}
+ .bcard.table.v-unclear{{border-left-color:var(--flag)}} .bcard.table.v-todo{{border-left-color:#e1e6ea}}
+ .bcard.table.flagged{{box-shadow:var(--shadow),0 0 0 2px #7c3aed inset}}
+ .bnum{{font-family:'Fraunces',serif;font-weight:600;font-size:1.05rem}} .bstate{{font-size:.78rem;color:var(--soft);margin-top:.2rem}}
+ .bwarn{{font-size:.7rem;color:var(--bad);margin-top:.2rem;font-weight:600}}
+ .bempty{{padding:1.5rem 1.6rem;color:#9aa6b0}}
+ .rail{{width:240px;flex:none;background:#0a0f14;color:#cdd6df;padding:1.3rem 1rem;
+   display:flex;flex-direction:column;gap:.3rem;position:sticky;top:0;height:100vh}}
+ .rail .brand{{font-family:'Fraunces',serif;font-weight:600;font-size:1.4rem;color:#fff;padding:.2rem .6rem 1rem}}
+ .rail .brand .dot{{color:var(--brand,#10b981)}}
+ .rail a{{display:block;color:#cdd6df;text-decoration:none;padding:.55rem .7rem;border-radius:9px;font-size:.92rem}}
+ .rail a:hover{{background:#18222c;color:#fff}} .rail .spacer{{flex:1}}
+ .rail .foot{{font-size:.72rem;color:#566472;padding:.6rem .7rem;border-top:1px solid #1b2630}}
+ .app{{display:flex;min-height:100vh}} .main{{flex:1;min-width:0}}
 </style></head><body>
-<header><b>E14 &middot; Navegar / Browse</b>
-  <a href="/station">&rarr; Ir a la estacion / Review station</a></header>
+<div class="app">
+<nav class="rail">
+  <div class="brand">Veeduría E14<span class="dot">.</span></div>
+  <a href="/station">Estación de revisión</a>
+  <a href="/browse">Navegar mesas</a>
+  <div class="spacer"></div>
+  <div class="foot">Estación local · Colombia 2026.</div>
+</nav>
+<div class="main">
 <div class="crumbs">{crumb_html}</div>
 <h2>{esc(heading)}</h2>
 {body}
+</div></div>
 </body></html>"""
 
 
@@ -882,122 +917,165 @@ refreshAuth(); showConsensus();
 def station_shell(body, dept, code, total_dl, reviewed, prefilled=False):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Review Station</title><style>
+<title>Review Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+ :root{{
+   --bg:#0c1116; --panel:#11181f; --rail:#0a0f14;
+   --card:#ffffff; --ink:#0e1419; --soft:#5d6b78; --line:#eceff2;
+   --brand:#10b981; --brand-d:#059669; --brand-soft:#e7f7f1;
+   --flag:#d97706; --flag-soft:#fff7ed; --bad:#dc2626; --good:#10b981;
+   --shadow:0 1px 2px rgba(13,20,25,.04), 0 12px 28px -16px rgba(13,20,25,.25);
+ }}
  *{{box-sizing:border-box}}
- body{{font:14px/1.5 system-ui,sans-serif;margin:0;color:#1a1a1a;background:#f4f5f7}}
- header{{background:#11161d;color:#fff;padding:.7rem 1.1rem;display:flex;gap:1.1rem;align-items:center}}
- header b{{font-size:1.05rem}} header .k{{opacity:.85;font-size:.85rem}}
+ body{{font-family:'Inter Tight',system-ui,sans-serif;font-size:14px;line-height:1.5;margin:0;
+   color:var(--ink);background:#f6f8f9;-webkit-font-smoothing:antialiased}}
+ header{{background:#fff;border-bottom:1px solid var(--line);padding:1rem 1.6rem;display:flex;gap:1.1rem;align-items:center}}
+ header b{{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem;letter-spacing:-.01em;color:var(--ink)}}
+ header .k{{color:var(--soft);font-size:.82rem;font-variant-numeric:tabular-nums}}
  .spacer{{flex:1}}
  .es{{display:block;font-size:.72em;opacity:.62;font-weight:400}}
- .pipe{{font-size:.78rem;opacity:.8;font-family:ui-monospace,monospace}}
- .ctl{{background:#1e88e5;color:#fff;border:0;padding:.42rem .8rem;border-radius:6px;cursor:pointer;font-size:.85rem}}
- .ctl:disabled{{opacity:.5;cursor:default}}
- .auto{{font-size:.82rem;display:flex;gap:.3rem;align-items:center;cursor:pointer}}
- .auto select{{background:#222a35;color:#fff;border:1px solid #3a4654;border-radius:4px;padding:.22rem}}
- .bar{{height:4px;background:#dfe3e8}} .barfill{{height:100%;width:0;background:#1e88e5;transition:width .4s}}
- .blockbanner{{background:#ffebee;border-bottom:1px solid #ef9a9a;color:#b71c1c;padding:.6rem 1.1rem;font-size:.9rem}}
- .note{{background:#fff8e1;border-bottom:1px solid #ffe082;padding:.5rem 1.1rem;font-size:.88rem}}
+ .pipe{{font-size:.76rem;color:var(--soft);font-family:ui-monospace,monospace}}
+ .ctl{{background:var(--brand-d);color:#fff;border:0;padding:.5rem .9rem;border-radius:10px;cursor:pointer;
+   font-size:.85rem;font-weight:600;font-family:inherit;transition:filter .12s}}
+ .ctl:hover{{filter:brightness(1.08)}}
+ .ctl:disabled{{opacity:.5;cursor:default;filter:none}}
+ .auto{{font-size:.82rem;display:flex;gap:.35rem;align-items:center;cursor:pointer;color:var(--soft);font-weight:500}}
+ .auto select{{background:#fff;color:var(--ink);border:1px solid #d3dae0;border-radius:8px;padding:.3rem .4rem;font:inherit}}
+ .bar{{height:4px;background:#e6eaee}} .barfill{{height:100%;width:0;background:var(--brand);transition:width .4s}}
+ .blockbanner{{background:#fdeaea;border-bottom:1px solid #f6c9c9;color:var(--bad);padding:.65rem 1.6rem;font-size:.88rem}}
+ .note{{background:var(--flag-soft);border-bottom:1px solid #fde9cf;padding:.7rem 1.6rem;font-size:.85rem;color:#92400e}}
 
  /* 5-step progress strip */
- .strip{{display:flex;align-items:center;gap:.2rem;padding:.7rem 1.1rem;background:#fff;
-   border-bottom:1px solid #e2e5ea;flex-wrap:wrap}}
- .step{{display:flex;align-items:center;gap:.5rem;padding:.4rem .8rem;border-radius:999px;
-   background:#eceef1;color:#5a6573;font-size:.82rem;transition:.25s}}
- .step .num{{display:inline-grid;place-items:center;width:1.4rem;height:1.4rem;border-radius:50%;
-   background:#c7cdd6;color:#fff;font-weight:700;font-size:.78rem}}
+ .strip{{display:flex;align-items:center;gap:.25rem;padding:.8rem 1.6rem;background:#fff;
+   border-bottom:1px solid var(--line);flex-wrap:wrap}}
+ .step{{display:flex;align-items:center;gap:.5rem;padding:.45rem .85rem;border-radius:999px;
+   background:#f1f4f6;color:var(--soft);font-size:.82rem;transition:.25s}}
+ .step .num{{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;
+   background:#c7cfd7;color:#fff;font-weight:700;font-size:.78rem;font-variant-numeric:tabular-nums}}
  .step .slab{{line-height:1.05}} .step .slab em{{display:block;font-style:normal;font-size:.7em;opacity:.7}}
- .step.done{{background:#e3f6e9;color:#1b6e3a}} .step.done .num{{background:#2e9e54}}
- .step.active{{background:#e3f0ff;color:#0d4ea8;box-shadow:0 0 0 2px #9ec4ff inset}}
- .step.active .num{{background:#1e88e5}}
- .arrow{{color:#c0c6cf;font-size:1.1rem}}
+ .step.done{{background:var(--brand-soft);color:#1b6e3a}} .step.done .num{{background:var(--brand)}}
+ .step.active{{background:#fff7ed;color:#92400e;box-shadow:0 0 0 2px #fcd9a8 inset}}
+ .step.active .num{{background:var(--flag)}}
+ .arrow{{color:#c4ccd4;font-size:1.1rem}}
 
  /* station split */
- .station{{display:flex;gap:1rem;padding:1rem;height:calc(100vh - 168px)}}
- .pdfpane{{flex:0 0 60%;display:flex;flex-direction:column;background:#fff;border:1px solid #e2e5ea;
-   border-radius:10px;overflow:hidden}}
- .numpane{{flex:1;background:#fff;border:1px solid #e2e5ea;border-radius:10px;padding:.9rem 1.1rem;
-   overflow:auto}}
- .panehead{{padding:.55rem .8rem;border-bottom:1px solid #eef0f3;display:flex;align-items:center;gap:.6rem}}
- .panehead .loc{{color:#7a828c;font-size:.8rem;margin-left:auto}}
- .pdfembed{{flex:1;width:100%;border:0}}
- .nopdf{{flex:1;display:grid;place-items:center;color:#9aa1ab}}
- .vbadge{{font-size:.72rem;padding:.1rem .5rem;border-radius:999px;color:#fff;text-transform:uppercase}}
- .totalsband{{margin:.4rem 0 .8rem;border:2px solid #b07cff;border-radius:8px;overflow:hidden;background:#faf7ff}}
- .totalsband .tbcap{{font-size:.7rem;color:#6a3fb0;padding:.25rem .5rem;background:#f0e8ff;font-weight:600}}
+ .station{{display:flex;gap:1.2rem;padding:1.2rem 1.6rem;height:calc(100vh - 178px)}}
+ .pdfpane{{flex:0 0 60%;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);
+   border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}}
+ .numpane{{flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.1rem 1.3rem;
+   overflow:auto;box-shadow:var(--shadow)}}
+ .panehead{{padding:.65rem .9rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:.6rem;
+   background:var(--panel);color:#eef3f7;font-weight:500}}
+ .panehead .loc{{color:#9fb0bd;font-size:.8rem;margin-left:auto;font-variant-numeric:tabular-nums}}
+ .pdfembed{{flex:1;width:100%;border:0;background:#2a3138}}
+ .nopdf{{flex:1;display:grid;place-items:center;color:#9aa6b0}}
+ .vbadge{{font-size:.72rem;padding:.12rem .55rem;border-radius:999px;color:#fff;text-transform:uppercase;font-weight:600}}
+ .totalsband{{margin:.4rem 0 .8rem;border:2px solid #c4b5fd;border-radius:12px;overflow:hidden;background:#faf8ff}}
+ .totalsband .tbcap{{font-size:.7rem;color:#6d28d9;padding:.3rem .6rem;background:#f3eeff;font-weight:600;text-transform:uppercase;letter-spacing:.03em}}
  .totalsband img{{display:block;width:100%;height:auto;max-height:220px;object-fit:contain;background:#fff}}
- .vbadge.v-valid{{background:#2e9e54}} .vbadge.v-anomaly{{background:#e53935}} .vbadge.v-unclear{{background:#fb8c00}}
+ .vbadge.v-valid{{background:var(--good)}} .vbadge.v-anomaly{{background:var(--bad)}} .vbadge.v-unclear{{background:var(--flag)}}
 
- .numpane h3{{font-size:.92rem;margin:.6rem 0 .4rem}}
+ .numpane h3{{font-family:'Fraunces',serif;font-weight:600;font-size:1.02rem;margin:.6rem 0 .45rem;letter-spacing:-.01em}}
  .numgrid{{border-collapse:collapse;width:100%;font-size:.86rem}}
- .numgrid th,.numgrid td{{border:1px solid #e7e9ed;padding:.3rem .45rem;text-align:left}}
- .numgrid th{{background:#f6f7f9;font-size:.78rem;color:#5a6573}}
- .numgrid .grphdr td{{background:#f0f6ff;font-weight:600;color:#34557e;font-size:.76rem;text-transform:uppercase;letter-spacing:.03em}}
+ .numgrid th,.numgrid td{{border:1px solid var(--line);padding:.35rem .5rem;text-align:left}}
+ .numgrid th{{background:#f6f8f9;font-size:.78rem;color:var(--soft);font-weight:600}}
+ .numgrid .grphdr td{{background:#f1f4f6;font-weight:600;color:#34557e;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}}
  .numgrid .lbl{{width:58%}} .numgrid .lbl .es{{font-size:.7em}}
- .numin{{width:100%;padding:.3rem .4rem;border:1px solid #cfd4db;border-radius:5px;font-size:.9rem;text-align:right}}
- .numin::placeholder{{color:#b9bfc8;font-style:italic}}
- .namein{{width:100%;padding:.3rem .4rem;border:1px solid #e0e3e8;border-radius:5px;font-size:.82rem;background:#fafbfc}}
- .sumcheck{{margin:.7rem 0;padding:.55rem .7rem;border-radius:7px;font-weight:600;font-size:.9rem;
-   background:#f0f2f5;color:#5a6573}}
- .sumcheck.ok{{background:#e3f6e9;color:#1b6e3a}} .sumcheck.bad{{background:#fde7e7;color:#b3261e}}
- .rebtn{{font-size:.7rem;font-weight:400;background:#6750a4;color:#fff;border:0;border-radius:5px;padding:.25rem .5rem;cursor:pointer;margin-left:.5rem}}
- .vbadge{{font-size:.78rem;color:#6750a4;min-height:1.1rem;margin:.2rem 0}}
- .vbadge.reading{{background:#ede7f6;color:#4527a0;font-weight:600;padding:.35rem .6rem;
-   border-radius:6px;border:1px solid #b39ddb;animation:vpulse 1.2s ease-in-out infinite}}
+ .numin{{width:100%;padding:.4rem .45rem;border:1px solid #d3dae0;border-radius:8px;font:inherit;font-size:.9rem;
+   text-align:right;font-variant-numeric:tabular-nums}}
+ .numin:focus{{outline:2px solid var(--brand);border-color:var(--brand)}}
+ .numin::placeholder{{color:#b9c2cc;font-style:italic}}
+ .namein{{width:100%;padding:.4rem .45rem;border:1px solid #e0e4e8;border-radius:8px;font:inherit;font-size:.82rem;background:#fafbfc}}
+ .sumcheck{{margin:.8rem 0;padding:.6rem .8rem;border-radius:12px;font-weight:600;font-size:.9rem;
+   background:#f1f4f6;color:var(--soft);font-variant-numeric:tabular-nums}}
+ .sumcheck.ok{{background:var(--brand-soft);color:var(--brand-d)}} .sumcheck.bad{{background:#fdeaea;color:var(--bad)}}
+ .rebtn{{font-size:.7rem;font-weight:600;background:#7c3aed;color:#fff;border:0;border-radius:8px;padding:.3rem .55rem;cursor:pointer;margin-left:.5rem;font-family:inherit}}
+ .vbadge{{font-size:.78rem;color:#7c3aed;min-height:1.1rem;margin:.2rem 0}}
+ .vbadge.reading{{background:#f3eeff;color:#6d28d9;font-weight:600;padding:.4rem .65rem;
+   border-radius:10px;border:1px solid #c4b5fd;animation:vpulse 1.2s ease-in-out infinite}}
  @keyframes vpulse{{0%,100%{{opacity:1}}50%{{opacity:.55}}}}
- .fromvision{{border:2px solid #d32f2f !important;background:#fdecea}}
+ .fromvision{{border:2px solid var(--bad) !important;background:#fdecea}}
  .confirmed{{border:2px solid #1b6e3a !important;background:#fff}}
- .sumcheck.empty{{background:#eee;color:#666}}
+ .sumcheck.empty{{background:#f1f4f6;color:var(--soft)}}
  .candname{{font-size:.82rem;font-weight:500}}
- .autorev{{margin:.6rem 0;padding:.5rem .7rem;background:#eef2f7;border-radius:7px;font-size:.85rem}}
- .autorev label{{display:flex;gap:.4rem;align-items:center;cursor:pointer;font-weight:600}}
- .arbar{{height:6px;background:#d4dae2;border-radius:3px;margin:.4rem 0;overflow:hidden}}
- .arfill{{height:100%;width:0;background:#1e88e5}}
- .arnote{{color:#555;font-size:.78rem}}
- textarea{{width:100%;height:54px;margin:.3rem 0 .6rem;border:1px solid #cfd4db;border-radius:6px;padding:.4rem;font:inherit}}
- .verdicts{{display:flex;gap:.5rem}}
- .verdicts button{{flex:1;padding:.6rem .3rem;border:0;border-radius:7px;color:#fff;cursor:pointer;
-   font-size:.88rem;font-weight:600}}
+ .autorev{{margin:.7rem 0;padding:.6rem .8rem;background:#f1f4f6;border-radius:12px;font-size:.85rem}}
+ .autorev label{{display:flex;gap:.45rem;align-items:center;cursor:pointer;font-weight:600}}
+ .arbar{{height:6px;background:#dbe1e7;border-radius:99px;margin:.45rem 0;overflow:hidden}}
+ .arfill{{height:100%;width:0;background:var(--brand)}}
+ .arnote{{color:var(--soft);font-size:.78rem}}
+ textarea{{width:100%;height:54px;margin:.3rem 0 .6rem;border:1px solid #d3dae0;border-radius:10px;padding:.5rem;font:inherit}}
+ textarea:focus{{outline:2px solid var(--brand);border-color:var(--brand)}}
+ .verdicts{{display:flex;gap:.55rem}}
+ .verdicts button{{flex:1;padding:.7rem .3rem;border:0;border-radius:11px;color:#fff;cursor:pointer;
+   font-size:.88rem;font-weight:600;font-family:inherit;transition:filter .12s}}
+ .verdicts button:hover{{filter:brightness(1.08)}}
  .verdicts button span{{display:block;font-size:.72em;opacity:.85;font-weight:400}}
- .v-valid{{background:#2e9e54}} .v-anomaly{{background:#e53935}} .v-unclear{{background:#fb8c00}}
+ .v-valid{{background:var(--good)}} .v-anomaly{{background:var(--bad)}} .v-unclear{{background:var(--flag)}}
  .emptywrap{{padding:2rem}}
 
- /* live feed (kept, bottom-right, dark) */
- .feed{{position:fixed;right:1rem;bottom:1rem;width:340px;max-height:40vh;background:#0d1117;color:#c9d1d9;
-   border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);font:12px/1.45 ui-monospace,monospace;overflow:hidden;z-index:50}}
- .feedhead{{background:#161b22;padding:.4rem .7rem;font-weight:600;color:#8b949e;
+ /* live feed (kept, bottom-right, dark console) */
+ .feed{{position:fixed;right:1rem;bottom:1rem;width:340px;max-height:40vh;background:var(--rail);color:#c9d6df;
+   border-radius:14px;box-shadow:0 12px 28px -10px rgba(13,20,25,.5);font:12px/1.45 ui-monospace,monospace;overflow:hidden;z-index:50}}
+ .feedhead{{background:#11181f;padding:.45rem .75rem;font-weight:600;color:#8b9aa6;
    display:flex;align-items:center;gap:.5rem}}
- .feedhead .ftog{{margin-left:auto;cursor:pointer;background:none;border:0;color:#8b949e;
+ .feedhead .ftog{{margin-left:auto;cursor:pointer;background:none;border:0;color:#8b9aa6;
    font-size:14px;line-height:1;padding:0 .2rem}}
  .feedhead .ftog:hover{{color:#fff}}
  #feedlist{{padding:.3rem .5rem;overflow:auto;max-height:34vh}}
  .feed.collapsed{{display:none}}
  .feedshow{{position:fixed;right:1rem;bottom:1rem;z-index:50;cursor:pointer;
-   background:#161b22;color:#8b949e;border:1px solid #30363d;border-radius:8px;
-   padding:.35rem .7rem;font:12px/1 ui-monospace,monospace;box-shadow:0 4px 20px rgba(0,0,0,.3)}}
+   background:#11181f;color:#8b9aa6;border:1px solid #1f2a34;border-radius:12px;
+   padding:.4rem .75rem;font:12px/1 ui-monospace,monospace;box-shadow:0 12px 28px -10px rgba(13,20,25,.5)}}
  .feedshow:hover{{color:#fff}}
  .ev{{padding:.12rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
  .ev.download{{color:#79c0ff}} .ev.ocr{{color:#d2a8ff}} .ev.validate{{color:#ffa657}}
- .ev.block{{color:#ff7b72;font-weight:600}} .ev.info{{color:#8b949e}}
+ .ev.block{{color:#ff7b72;font-weight:600}} .ev.info{{color:#8b9aa6}}
+ /* sidebar (matches public_server) */
+ .rail{{width:240px;flex:none;background:var(--rail,#0a0f14);color:#cdd6df;padding:1.3rem 1rem;
+   display:flex;flex-direction:column;gap:.3rem;position:sticky;top:0;height:100vh}}
+ .rail .brand{{font-family:'Fraunces',serif;font-weight:600;font-size:1.4rem;color:#fff;padding:.2rem .6rem 1rem;letter-spacing:-.01em}}
+ .rail .brand .dot{{color:var(--brand,#10b981)}}
+ .rail .sect{{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#5f6e7b;padding:1rem .7rem .35rem}}
+ .rail a{{display:block;color:#cdd6df;text-decoration:none;padding:.55rem .7rem;border-radius:9px;font-size:.92rem}}
+ .rail a:hover{{background:#18222c;color:#fff}}
+ .rail .spacer{{flex:1}}
+ .rail .foot{{font-size:.72rem;color:#566472;padding:.6rem .7rem;border-top:1px solid #1b2630}}
+ .app{{display:flex;min-height:100vh}} .main{{flex:1;min-width:0}}
+ .topbar{{background:#fff;border-bottom:1px solid var(--line,#eceff2);padding:.8rem 1.4rem;
+   display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}}
+ .topbar h1{{font-family:'Fraunces',serif;font-weight:600;font-size:1.2rem;margin:0}}
 </style></head><body>
-<header><b>Review Station</b>
-  <a href="/browse" style="color:#cfe0ff;text-decoration:none;font-size:.85rem">&#9776; Navegar / Browse</a>
+<div class="app">
+<nav class="rail">
+  <div class="brand">Veeduría E14<span class="dot">.</span></div>
+  <a href="/station">Estación de revisión</a>
+  <a href="/browse">Navegar mesas</a>
+  <div class="sect">Pipeline</div>
+  <div class="spacer"></div>
+  <div class="foot">Estación local · con visión (Ollama).<br>Colombia 2026.</div>
+</nav>
+<div class="main">
+<header class="topbar"><h1>Revisión</h1>
   <label class="auto">Dept
     <select id="deptSel"><option value="">All</option></select>
   </label>
-  <span class="k">Downloaded: {esc(total_dl)}</span>
-  <span class="k">Reviewed: {esc(reviewed)}</span>
+  <span class="k">Descargadas: {esc(total_dl)}</span>
+  <span class="k">Revisadas: {esc(reviewed)}</span>
   <span class="spacer"></span>
   <span id="prog" class="pipe"></span>
   <span id="pipe" class="pipe">pipeline: loading...</span>
-  <button id="runBtn" class="ctl">Run batch now</button>
-  <label class="auto"><input type="checkbox" id="autoBox"> Auto (whole dept)</label>
+  <button id="runBtn" class="ctl">Procesar lote</button>
+  <label class="auto"><input type="checkbox" id="autoBox"> Auto (depto)</label>
 </header>
 <div id="bar" class="bar"><div id="barfill" class="barfill"></div></div>
 <div id="blockbanner" class="blockbanner" style="display:none">
-  Source is blocking requests (403/429). Auto-processing paused. Wait a few
-  minutes or switch network, then press Run / Auto again.</div>
-<div class="note"><b>Flagged = needs manual review, not fraud.</b> OCR errors look
-  like anomalies. Decide each case against the original tally sheet.</div>
+  La fuente está bloqueando peticiones (403/429). Procesamiento pausado. Espera
+  unos minutos o cambia de red, y vuelve a pulsar Procesar / Auto.</div>
+<div class="note"><b>Marcada = necesita revisión manual, no es fraude.</b> El OCR
+  produce errores que parecen anomalías. Decide cada caso contra el acta original.</div>
 {body}
 <div id="feed" class="feed"><div class="feedhead"><span>Live activity &middot; Actividad en vivo</span>
   <button type="button" class="ftog" id="feedHide" title="Hide / Ocultar">&minus;</button></div>
@@ -1225,63 +1303,79 @@ if(autoRevBox){{
 loadDepts(); setInterval(poll,2000); setInterval(pollEvents,1000); poll(); pollEvents(); prefill();
 </script>
 {_consensus_block(code)}
+</div></div>
 </body></html>"""
 
 
 def shell(body, total, done, real):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tally Review</title><style>
- body{{font:14px/1.5 system-ui,sans-serif;margin:0;color:#1a1a1a}}
- header{{background:#1a1a1a;color:#fff;padding:.8rem 1.2rem;display:flex;gap:1.4rem;align-items:center}}
- header b{{font-size:1.1rem}} header .k{{opacity:.85}}
+<title>Tally Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+ :root{{
+   --bg:#0c1116; --panel:#11181f; --rail:#0a0f14;
+   --card:#ffffff; --ink:#0e1419; --soft:#5d6b78; --line:#eceff2;
+   --brand:#10b981; --brand-d:#059669; --brand-soft:#e7f7f1;
+   --flag:#d97706; --flag-soft:#fff7ed; --bad:#dc2626; --good:#10b981;
+   --shadow:0 1px 2px rgba(13,20,25,.04), 0 12px 28px -16px rgba(13,20,25,.25);
+ }}
+ body{{font-family:'Inter Tight',system-ui,sans-serif;font-size:14px;line-height:1.5;margin:0;
+   color:var(--ink);background:#f6f8f9;-webkit-font-smoothing:antialiased}}
+ header{{background:#fff;border-bottom:1px solid var(--line);padding:1rem 1.6rem;display:flex;gap:1.4rem;align-items:center}}
+ header b{{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem;letter-spacing:-.01em}} header .k{{color:var(--soft);font-variant-numeric:tabular-nums}}
  .spacer{{flex:1}}
- .pipe{{font-size:.8rem;opacity:.8;font-family:ui-monospace,monospace}}
- .ctl{{background:#1e88e5;color:#fff;border:0;padding:.45rem .8rem;border-radius:6px;cursor:pointer}}
- .ctl:disabled{{opacity:.5;cursor:default}}
- .auto{{font-size:.85rem;display:flex;gap:.3rem;align-items:center;cursor:pointer}}
- .auto select{{background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:.2rem}}
- .bar{{height:4px;background:#eee}} .barfill{{height:100%;width:0;background:#1e88e5;transition:width .4s}}
- .blockbanner{{background:#ffebee;border-bottom:1px solid #ef9a9a;color:#b71c1c;padding:.6rem 1.2rem;font-size:.9rem}}
- .feed{{position:fixed;right:1rem;bottom:1rem;width:380px;max-height:46vh;background:#0d1117;color:#c9d1d9;
-   border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);font:12px/1.45 ui-monospace,monospace;overflow:hidden;z-index:50}}
- .feedhead{{background:#161b22;padding:.4rem .7rem;font-weight:600;color:#8b949e;
+ .pipe{{font-size:.78rem;color:var(--soft);font-family:ui-monospace,monospace}}
+ .ctl{{background:var(--brand-d);color:#fff;border:0;padding:.5rem .9rem;border-radius:10px;cursor:pointer;font-weight:600;font-family:inherit;transition:filter .12s}}
+ .ctl:hover{{filter:brightness(1.08)}}
+ .ctl:disabled{{opacity:.5;cursor:default;filter:none}}
+ .auto{{font-size:.85rem;display:flex;gap:.35rem;align-items:center;cursor:pointer;color:var(--soft);font-weight:500}}
+ .auto select{{background:#fff;color:var(--ink);border:1px solid #d3dae0;border-radius:8px;padding:.3rem .4rem;font:inherit}}
+ .bar{{height:4px;background:#e6eaee}} .barfill{{height:100%;width:0;background:var(--brand);transition:width .4s}}
+ .blockbanner{{background:#fdeaea;border-bottom:1px solid #f6c9c9;color:var(--bad);padding:.65rem 1.6rem;font-size:.88rem}}
+ .feed{{position:fixed;right:1rem;bottom:1rem;width:380px;max-height:46vh;background:var(--rail);color:#c9d6df;
+   border-radius:14px;box-shadow:0 12px 28px -10px rgba(13,20,25,.5);font:12px/1.45 ui-monospace,monospace;overflow:hidden;z-index:50}}
+ .feedhead{{background:#11181f;padding:.45rem .75rem;font-weight:600;color:#8b9aa6;
    display:flex;align-items:center;gap:.5rem}}
- .feedhead .ftog{{margin-left:auto;cursor:pointer;background:none;border:0;color:#8b949e;
+ .feedhead .ftog{{margin-left:auto;cursor:pointer;background:none;border:0;color:#8b9aa6;
    font-size:14px;line-height:1;padding:0 .2rem}}
  .feedhead .ftog:hover{{color:#fff}}
  #feedlist{{padding:.3rem .5rem;overflow:auto;max-height:40vh}}
  .feed.collapsed{{display:none}}
  .feedshow{{position:fixed;right:1rem;bottom:1rem;z-index:50;cursor:pointer;
-   background:#161b22;color:#8b949e;border:1px solid #30363d;border-radius:8px;
-   padding:.35rem .7rem;font:12px/1 ui-monospace,monospace;box-shadow:0 4px 20px rgba(0,0,0,.3)}}
+   background:#11181f;color:#8b9aa6;border:1px solid #1f2a34;border-radius:12px;
+   padding:.4rem .75rem;font:12px/1 ui-monospace,monospace;box-shadow:0 12px 28px -10px rgba(13,20,25,.5)}}
  .feedshow:hover{{color:#fff}}
  .ev{{padding:.12rem 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
  .ev.download{{color:#79c0ff}} .ev.ocr{{color:#d2a8ff}} .ev.validate{{color:#ffa657}}
- .ev.block{{color:#ff7b72;font-weight:600}} .ev.info{{color:#8b949e}}
- .note{{background:#fff8e1;border-bottom:1px solid #ffe082;padding:.5rem 1.2rem;font-size:.9rem}}
+ .ev.block{{color:#ff7b72;font-weight:600}} .ev.info{{color:#8b9aa6}}
+ .note{{background:var(--flag-soft);border-bottom:1px solid #fde9cf;padding:.7rem 1.6rem;font-size:.85rem;color:#92400e}}
  .layout{{display:flex;height:calc(100vh - 92px)}}
- .queue{{width:230px;border-right:1px solid #e0e0e0;overflow:auto;padding:.5rem}}
- .queue h3{{font-size:.8rem;text-transform:uppercase;color:#666;margin:.4rem}}
+ .queue{{width:230px;border-right:1px solid var(--line);overflow:auto;padding:.5rem;background:#fff}}
+ .queue h3{{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);margin:.4rem;font-weight:600}}
  .items{{display:flex;flex-direction:column}}
- .qitem{{display:flex;justify-content:space-between;padding:.4rem .6rem;text-decoration:none;
-   color:#222;border-radius:6px;font-size:.82rem}}
- .qitem:hover{{background:#f0f0f0}} .qitem.active{{background:#e3f2fd;font-weight:600}}
- .qitem.real{{border-left:3px solid #e53935}} .qitem.ocr_error{{border-left:3px solid #43a047}}
- .qitem.unclear{{border-left:3px solid #fb8c00}} .qitem.todo{{border-left:3px solid #ccc}}
- .badge{{opacity:.6;font-size:.7rem}}
- .detail{{flex:1;overflow:auto;padding:1rem 1.4rem}}
- .loc{{color:#666}}
+ .qitem{{display:flex;justify-content:space-between;padding:.45rem .6rem;text-decoration:none;
+   color:var(--ink);border-radius:9px;font-size:.82rem}}
+ .qitem:hover{{background:#f1f4f6}} .qitem.active{{background:var(--brand-soft);font-weight:600}}
+ .qitem.real{{border-left:3px solid var(--bad)}} .qitem.ocr_error{{border-left:3px solid var(--good)}}
+ .qitem.unclear{{border-left:3px solid var(--flag)}} .qitem.todo{{border-left:3px solid #e1e6ea}}
+ .badge{{opacity:.6;font-size:.7rem;font-variant-numeric:tabular-nums}}
+ .detail{{flex:1;overflow:auto;padding:1.2rem 1.6rem}}
+ .loc{{color:var(--soft)}}
  .cols{{display:flex;gap:1.2rem;align-items:flex-start}}
  .pdfbox{{flex:1.4}} .side{{flex:1;min-width:300px}}
  table{{border-collapse:collapse;width:100%;font-size:.85rem}}
- th,td{{border:1px solid #ddd;padding:.35rem .5rem;text-align:left}} th{{background:#f5f5f5}}
- .ocr{{background:#fafafa;border:1px solid #eee;padding:.6rem;max-height:200px;overflow:auto;
+ th,td{{border:1px solid var(--line);padding:.4rem .55rem;text-align:left}} th{{background:#f6f8f9;color:var(--soft);font-weight:600}}
+ .ocr{{background:#f6f8f9;border:1px solid var(--line);border-radius:10px;padding:.6rem;max-height:200px;overflow:auto;
    white-space:pre-wrap;font-size:.78rem}}
- textarea{{width:100%;height:60px;margin:.4rem 0}}
- .verdicts{{display:flex;gap:.5rem}} .verdicts button{{flex:1;padding:.6rem;border:0;border-radius:6px;
-   color:#fff;cursor:pointer;font-size:.85rem}}
- .v-real{{background:#e53935}} .v-ocr{{background:#43a047}} .v-unclear{{background:#fb8c00}}
+ textarea{{width:100%;height:60px;margin:.4rem 0;border:1px solid #d3dae0;border-radius:10px;padding:.5rem;font:inherit}}
+ textarea:focus{{outline:2px solid var(--brand);border-color:var(--brand)}}
+ .verdicts{{display:flex;gap:.5rem}} .verdicts button{{flex:1;padding:.65rem;border:0;border-radius:11px;
+   color:#fff;cursor:pointer;font-size:.85rem;font-weight:600;font-family:inherit;transition:filter .12s}}
+ .verdicts button:hover{{filter:brightness(1.08)}}
+ .v-real{{background:var(--bad)}} .v-ocr{{background:var(--good)}} .v-unclear{{background:var(--flag)}}
 </style></head><body>
 <header><b>Tally Review</b>
   <label class="auto">Dept
