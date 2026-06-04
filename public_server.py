@@ -492,9 +492,9 @@ def mesa_page(sel: dict) -> str:
       <span>Acta E14 oficial</span>
       <a href="{esc(src_url)}" target="_blank" rel="noopener">Abrir en pestaña nueva &#8599;</a>
     </div>
-    <div id="pdfwrap" style="position:relative;flex:1">
+    <div id="pdfwrap" style="position:relative;flex:1;min-height:60vh">
       <div id="pdfmsg" style="padding:1.2rem;font-size:.9rem;color:var(--soft)">
-        Cargando el acta… (puede tardar unos segundos)</div>
+        Cargando el acta…</div>
       <iframe class="pdfframe" id="pdfframe" title="Acta E14" style="display:none"></iframe>
     </div>
     <div class="pdffallback">¿No se ve el acta?
@@ -522,22 +522,37 @@ def mesa_page(sel: dict) -> str:
   </section>
 </div>
 <script>
-// Load the acta through our proxy. We probe with fetch so we can show a clear
-// message if the source times out / blocks (the iframe alone would just sit
-// blank). On success, point the iframe at the same (now-warm) proxy URL.
+// Showing the acta has two paths:
+//  1) Our server proxy (embeds nicely, strips X-Frame-Options). Works when the
+//     host can reach the source — but datacenter IPs (Render) are throttled by
+//     the source's CDN, so we only WAIT A FEW SECONDS for it.
+//  2) Direct load from the VISITOR's browser (their residential IP usually
+//     passes). We can't iframe it (X-Frame-Options), so we use <object>, and
+//     always keep a prominent "open in a new tab" link as the sure path.
 (function(){{
   const PROXY={json.dumps(pdf_proxy)}, SRC={json.dumps(src_url)};
   const msg=document.getElementById('pdfmsg'), frame=document.getElementById('pdfframe');
-  // GET (not HEAD): the server caches the fetched PDF, so the iframe's own
-  // request is then served instantly from cache — no double download.
-  fetch(PROXY).then(r=>{{
+  function direct(){{
+    // The visitor's own browser fetches the official PDF directly.
+    msg.innerHTML='';
+    const obj=document.createElement('object');
+    obj.data=SRC; obj.type='application/pdf';
+    obj.style.cssText='width:100%;height:70vh;border:0';
+    const alt=document.createElement('div');
+    alt.style.cssText='padding:1rem;font-size:.9rem;color:var(--soft)';
+    alt.innerHTML='Si el acta no se muestra arriba, '+
+      '<a href="'+SRC+'" target="_blank" rel="noopener">ábrela en una pestaña nueva ↗</a>'+
+      ' y escribe los números igual.';
+    obj.append(alt); msg.append(obj);
+  }}
+  // Race the proxy against a short timeout; whichever loses, fall back to direct.
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(), 7000);
+  fetch(PROXY,{{signal:ctrl.signal}}).then(r=>{{
+    clearTimeout(t);
     if(r.ok){{ frame.src=PROXY; frame.style.display='block'; msg.style.display='none'; }}
-    else throw new Error('proxy '+r.status);
-  }}).catch(()=>{{
-    msg.innerHTML='No pudimos cargar el acta aquí (la fuente oficial respondió '+
-      'lento o bloqueó la descarga). <a href="'+SRC+'" target="_blank" rel="noopener">'+
-      'Ábrela directo en una pestaña nueva ↗</a> y escribe los números igual.';
-  }});
+    else direct();
+  }}).catch(()=>{{ clearTimeout(t); direct(); }});
 }})();
 const CODE={json.dumps(code)};
 const KEY='e14_'+CODE;
@@ -669,11 +684,13 @@ def tabla_page() -> str:
 PDF_MAGIC = b"%PDF-"
 
 
-# From a datacenter (e.g. Render) the Registraduria is much slower to respond
-# than from a residential Colombian IP, so the default read timeout is generous
-# and overridable. Set PDF_TIMEOUT (seconds) to tune it on the host.
-PDF_TIMEOUT = float(os.environ.get("PDF_TIMEOUT", "45"))
-PDF_TRIES = int(os.environ.get("PDF_TRIES", "2"))
+# The server-side proxy is a best-effort fast path: when the host can reach the
+# source quickly (e.g. local use) it embeds nicely. From a datacenter IP the
+# source's CDN throttles us, so we DON'T wait long — we give up fast and free
+# the worker, and the browser loads the PDF directly (see mesa_page JS).
+# Tunable via env on hosts that can afford to wait.
+PDF_TIMEOUT = float(os.environ.get("PDF_TIMEOUT", "8"))
+PDF_TRIES = int(os.environ.get("PDF_TRIES", "1"))
 
 # Small in-memory LRU cache: a fetched acta is reused for the iframe's own
 # request (the page probes with HEAD first) and for the next visitor on the
